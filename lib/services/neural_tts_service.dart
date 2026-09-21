@@ -155,16 +155,41 @@ class NeuralTtsService {
       onProgress?.call(const NeuralModelProgress(0, 'Baixando modelo neural…'));
       await _download(archiveFile, onProgress);
 
-      onProgress?.call(const NeuralModelProgress(.82, 'Verificando download…'));
-      final digest = await sha256.bind(archiveFile.openRead()).first;
-      if (digest.toString() != modelSha256) {
-        throw StateError('A verificação SHA-256 do modelo falhou. Tente baixar novamente.');
+      onProgress?.call(
+        const NeuralModelProgress(
+          .82,
+          'Verificando e preparando a voz em segundo plano…',
+        ),
+      );
+
+      // SHA-256 + BZip2/TAR são operações pesadas de CPU. Executá-las no
+      // isolate da interface fazia o Android aparentar travar em
+      // "Verificando download…" e podia disparar um ANR em aparelhos mais
+      // lentos. Todo o trabalho pesado de instalação agora roda fora da UI.
+      await staging.create(recursive: true);
+      final installError = await Isolate.run<String?>(() async {
+        try {
+          final digest = await sha256.bind(archiveFile.openRead()).first;
+          if (digest.toString() != modelSha256) {
+            return 'A verificação SHA-256 do modelo falhou. Tente baixar novamente.';
+          }
+          await extractFileToDisk(
+            archiveFile.path,
+            staging.path,
+            bufferSize: 256 * 1024,
+          );
+          return null;
+        } catch (e) {
+          return 'Falha ao preparar o modelo neural: $e';
+        }
+      });
+      if (installError != null) {
+        throw StateError(installError);
       }
 
-      onProgress?.call(const NeuralModelProgress(.86, 'Extraindo modelo…'));
-      await staging.create(recursive: true);
-      await extractFileToDisk(archiveFile.path, staging.path);
-
+      onProgress?.call(
+        const NeuralModelProgress(.94, 'Validando arquivos do modelo…'),
+      );
       final extracted = Directory(p.join(staging.path, modelFolderName));
       if (!await extracted.exists()) {
         throw StateError('O pacote da voz neural não contém a pasta esperada.');
