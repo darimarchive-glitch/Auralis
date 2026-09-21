@@ -196,7 +196,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            value: settings.defaultLanguage,
+            initialValue: settings.defaultLanguage,
             decoration: const InputDecoration(labelText: 'Idioma padrão'),
             items: const [
               DropdownMenuItem(value: 'pt-BR', child: Text('Português (Brasil)')),
@@ -330,7 +330,7 @@ class _SettingsPageState extends State<SettingsPage> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         DropdownButtonFormField<int>(
-          value: settings.neuralVoiceId.clamp(0, 9).toInt(),
+          initialValue: settings.neuralVoiceId.clamp(0, 9).toInt(),
           decoration: const InputDecoration(labelText: 'Voz neural'),
           items: NeuralTtsService.voices
               .map(
@@ -348,7 +348,7 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<int>(
-          value: settings.neuralSteps,
+          initialValue: settings.neuralSteps,
           decoration: const InputDecoration(labelText: 'Síntese neural'),
           items: const [
             DropdownMenuItem(value: 6, child: Text('Rápida — 6 etapas')),
@@ -390,7 +390,7 @@ class _SettingsPageState extends State<SettingsPage> {
         if (Platform.isAndroid && _engines.isNotEmpty) ...[
           const SizedBox(height: 16),
           DropdownButtonFormField<String>(
-            value: _engines.contains(settings.ttsEngine)
+            initialValue: _engines.contains(settings.ttsEngine)
                 ? settings.ttsEngine
                 : null,
             decoration: const InputDecoration(labelText: 'Mecanismo de voz'),
@@ -423,7 +423,7 @@ class _SettingsPageState extends State<SettingsPage> {
           const LinearProgressIndicator()
         else
           DropdownButtonFormField<String?>(
-            value: selectedVoiceKey,
+            initialValue: selectedVoiceKey,
             isExpanded: true,
             decoration: const InputDecoration(labelText: 'Voz do sistema'),
             items: [
