@@ -35,9 +35,9 @@ jobs:
       - name: Create Flatpak bundle
         run: |
           mkdir -p dist
-          flatpak build-bundle flatpak-repo dist/Auralis-Reader-2.0.0.flatpak io.github.darimarchive_glitch.Auralis stable
+          flatpak build-bundle flatpak-repo dist/Auralis-Reader-2.0.1.flatpak io.github.darimarchive_glitch.Auralis stable
       - uses: actions/upload-artifact@v4
         with:
-          name: Auralis-Reader-2.0.0-Flatpak
-          path: dist/Auralis-Reader-2.0.0.flatpak
+          name: Auralis-Reader-2.0.1-Flatpak
+          path: dist/Auralis-Reader-2.0.1.flatpak
           if-no-files-found: error

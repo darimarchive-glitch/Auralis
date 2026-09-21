@@ -32,6 +32,6 @@ jobs:
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\windows\Auralis.iss
       - uses: actions/upload-artifact@v4
         with:
-          name: Auralis-Reader-2.0.0-Windows
-          path: dist/Auralis-Reader-2.0.0-Setup.exe
+          name: Auralis-Reader-2.0.1-Windows
+          path: dist/Auralis-Reader-2.0.1-Setup.exe
           if-no-files-found: error
