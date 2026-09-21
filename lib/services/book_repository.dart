@@ -66,9 +66,15 @@ class BookRepository {
 
     final sink = stored.openWrite();
     try {
-      await picked.readAsByteStream().pipe(sink);
-    } catch (_) {
+      await for (final chunk in picked.readAsByteStream()) {
+        sink.add(chunk);
+      }
+      await sink.flush();
       await sink.close();
+    } catch (_) {
+      try {
+        await sink.close();
+      } catch (_) {}
       if (picked.path != null) {
         await File(picked.path!).copy(stored.path);
       } else {
