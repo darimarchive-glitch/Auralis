@@ -1,7 +1,7 @@
 name: auralis_reader
 description: Leitor universal de livros com narração local e interface inspirada no GNOME/Adwaita.
 publish_to: 'none'
-version: 1.2.0+3
+version: 1.2.0+4
 
 environment:
   sdk: '>=3.13.0 <4.0.0'
@@ -10,7 +10,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  adwaita_gtk: ^1.2.0
   archive: ^4.3.0
   audioplayers: ^6.8.1
   crypto: ^3.0.6
