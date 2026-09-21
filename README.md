@@ -1,134 +1,104 @@
-# Auralis Reader 1.2.0
+# Auralis Reader 2.0
 
-Leitor universal gratuito e local, com interface inspirada no GNOME/GTK Adwaita. O objetivo é transformar livros em uma experiência de leitura + narração sem conta, créditos ou tokens.
+Auralis é um leitor universal multiplataforma para **Android, Windows e Linux**, com foco em leitura confortável e narração por voz neural local.
 
-## Destaque da 1.2: voz neural realmente local
+A versão 2.0 foi reorganizada como um projeto limpo e mantém a versão anterior preservada na branch `legacy-1.2`.
 
-Auralis agora possui dois backends de narração:
+## Vozes realistas e locais
 
-- **Neural — Supertonic 3 (recomendado):** síntese ONNX local via `sherpa_onnx`, com 10 estilos de voz e suporte a português. O modelo é baixado uma vez (~123 MiB) e, depois disso, a síntese acontece no próprio dispositivo.
-- **Sistema:** usa Google Speech Services, Samsung TTS, Microsoft TTS ou outro mecanismo instalado, com fallback Linux para `speech-dispatcher`/`espeak-ng`.
+O modo principal de narração usa **Supertonic 3** através do `sherpa_onnx` 1.13.8. A síntese acontece no próprio aparelho, sem tokens e sem API de voz paga. O pacote neural é baixado uma única vez, verificado por SHA-256 e instalado no armazenamento privado do aplicativo.
 
-O modelo neural não é empacotado no APK. Isso mantém o instalador menor e permite que o usuário decida se quer ocupar espaço com o modelo. O download é validado com SHA-256 antes da instalação.
+O modelo oferece **10 vozes (F1–F5 e M1–M5)** e 31 idiomas, incluindo português, inglês, espanhol, francês, alemão, italiano, japonês e coreano. O Auralis também mantém o TTS do sistema como fallback.
 
-### Idiomas do modo neural
+### Modelo usado
 
-Supertonic 3 suporta 31 idiomas, incluindo português, inglês, espanhol, francês, alemão, italiano, japonês e coreano. O Auralis converte locales como `pt-BR` para o código de síntese `pt` automaticamente.
+- pacote: `sherpa-onnx-supertonic-3-tts-int8-2026-05-11.tar.bz2`
+- tamanho do download: 128.774.318 bytes (~123 MiB)
+- SHA-256: `82fa96f91c4ef8abaae3a14a3f4153facf88bed821d1f7331cec2700f432c427`
+- modelo: OpenRAIL-M
+- runtime: `sherpa_onnx` / Apache-2.0
 
-### Vozes
+## Formatos
 
-O pacote oficial expõe 10 speakers, identificados como `F1`–`F5` e `M1`–`M5`. O usuário pode alternar entre todos eles nas configurações e ouvir uma prévia.
+A biblioteca importa PDF com camada de texto, EPUB, TXT, HTML, Markdown, DOCX, FB2 e RTF. Os livros importados são copiados para o armazenamento privado do Auralis e o progresso é salvo localmente.
 
-## Recursos do leitor
+## Plataformas
 
-- Biblioteca local persistente.
-- Importa **PDF com camada de texto, EPUB, TXT, HTML, Markdown, DOCX, FB2 e RTF**.
-- Copia o livro para o armazenamento privado do aplicativo.
-- Divide conteúdo em capítulos/blocos e normaliza espaços, quebras e hifenização de PDF.
-- Narração sequencial com destaque do trecho atual.
-- Toque em qualquer trecho para continuar dali.
-- Retomada automática de capítulo e trecho.
-- Velocidade de leitura ajustável.
-- Tema claro/escuro/sistema com visual Adwaita.
-- Sem login, backend próprio, API key ou consumo de tokens.
+### Android
 
-## Privacidade
+O workflow `Android APK` gera:
 
-O texto dos livros não é enviado a um serviço de TTS quando o modo Neural é usado. A internet é necessária somente para baixar o pacote do modelo. Biblioteca, texto extraído e progresso permanecem no armazenamento do aplicativo.
+```text
+Auralis-Reader-2.0.0.apk
+```
 
-No modo Sistema, o comportamento de rede depende do mecanismo TTS escolhido pelo usuário e das configurações desse mecanismo.
+### Windows
 
-## Requisitos de desenvolvimento
+O workflow `Windows EXE` compila o runner nativo e cria um instalador com Inno Setup:
 
-- Flutter **3.47+** / Dart **3.13+**.
-- Android SDK para APK.
-- Linux: toolchain Flutter Linux + GTK de desenvolvimento.
-- Windows: Visual Studio com Desktop development with C++.
+```text
+Auralis-Reader-2.0.0-Setup.exe
+```
 
-## Preparar o projeto
+### Linux
 
-Os runners `android/`, `linux/` e `windows/` são gerados pela versão instalada do Flutter:
+O workflow `Linux Flatpak` compila o bundle Flutter Linux e empacota:
+
+```text
+Auralis-Reader-2.0.0.flatpak
+```
+
+O Flatpak usa `org.gnome.Platform//50`, atualmente suportado pelo Flathub, e tem acesso à rede somente porque o usuário pode optar por baixar o modelo neural.
+
+## Desenvolvimento
+
+Requisitos principais:
+
+- Flutter stable 3.47+ / Dart 3.13+
+- Android SDK para APK
+- Visual Studio Desktop C++ para Windows
+- GTK3, CMake, Ninja e toolchain Linux para Linux
+
+O repositório não precisa guardar runners gerados pelo Flutter. Rode:
 
 ```bash
 python tool/bootstrap.py
 ```
 
-Esse passo também adiciona a permissão `INTERNET` ao Android para o download opcional do modelo neural e registra a consulta dos mecanismos TTS do sistema.
-
 Depois:
 
 ```bash
-flutter run -d linux
-# ou
-flutter run -d windows
-# ou um Android conectado/emulador
+flutter test
+flutter analyze --no-fatal-infos
+flutter run
 ```
 
-## Gerar builds
+## Build local
+
+Android:
 
 ```bash
-python tool/build.py
+flutter build apk --release
 ```
 
-Saída Android típica:
+Windows:
 
-```text
-build/app/outputs/flutter-apk/app-release.apk
+```powershell
+flutter build windows --release
 ```
 
-O repositório também inclui `.github/workflows/android.yml`. Cada push para `main` executa testes, análise e gera um APK como artifact do GitHub Actions.
+Linux:
 
-## Modelo neural
-
-A implementação fica em `lib/services/neural_tts_service.dart`.
-
-Fluxo:
-
-1. Baixa `sherpa-onnx-supertonic-3-tts-int8-2026-05-11.tar.bz2`.
-2. Verifica o SHA-256 esperado.
-3. Extrai o modelo para o diretório privado de suporte do app.
-4. Mantém a inferência em um isolate dedicado para não bloquear a interface.
-5. Gera um WAV temporário por trecho.
-6. Reproduz o WAV localmente e apaga o arquivo temporário.
-7. Mantém o TTS do sistema como fallback quando o modelo não está instalado ou o idioma não é suportado.
-
-O modelo usa 8 etapas de síntese por padrão, conforme os exemplos oficiais do Supertonic 3 no sherpa-onnx. O usuário pode escolher 6, 8 ou 12 nas configurações.
-
-## Estrutura
-
-```text
-lib/
-├── controllers/
-│   ├── app_controller.dart
-│   └── reader_controller.dart
-├── models/
-│   ├── book.dart
-│   └── settings.dart
-├── services/
-│   ├── book_importer.dart
-│   ├── book_repository.dart
-│   ├── neural_tts_service.dart
-│   ├── text_normalizer.dart
-│   └── tts_service.dart
-└── ui/
-    ├── library_page.dart
-    ├── reader_page.dart
-    ├── settings_page.dart
-    └── widgets/book_card.dart
+```bash
+flutter build linux --release
 ```
 
-## Limites conhecidos
+Para builds reproduzíveis de distribuição, use os workflows em `.github/workflows/`.
 
-1. **PDF escaneado:** OCR local ainda não está implementado.
-2. **MOBI/AZW3:** ainda não fazem parte do importador.
-3. **Primeira instalação da voz neural:** exige internet e espaço temporário adicional para download/descompactação.
-4. **Desempenho:** a velocidade da síntese neural depende da CPU do aparelho.
-5. DRM não é removido nem contornado.
+## Privacidade
+
+No modo neural, o texto do livro é processado localmente. A conexão de internet é usada para baixar o modelo; depois da instalação, a síntese não precisa de serviço de nuvem. No modo TTS do sistema, o comportamento de rede depende do mecanismo de voz instalado no sistema operacional.
 
 ## Licenças
 
-- Código do Auralis: MIT.
-- `sherpa-onnx`: Apache-2.0.
-- Modelo Supertonic 3: OpenRAIL-M.
-
-Veja [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) antes de redistribuir o aplicativo com alterações no mecanismo/modelo de voz.
+O código do Auralis é MIT. Dependências e modelos mantêm suas licenças próprias; veja `THIRD_PARTY_NOTICES.md`.

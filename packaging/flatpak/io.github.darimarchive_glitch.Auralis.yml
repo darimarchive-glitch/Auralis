@@ -1,0 +1,35 @@
+app-id: io.github.darimarchive_glitch.Auralis
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+command: auralis-reader
+branch: stable
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=dri
+  - --filesystem=home:ro
+modules:
+  - name: auralis-reader
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/auralis
+      - cp -a bundle/. /app/auralis/
+      - install -Dm755 auralis-reader /app/bin/auralis-reader
+      - install -Dm644 io.github.darimarchive_glitch.Auralis.desktop /app/share/applications/io.github.darimarchive_glitch.Auralis.desktop
+      - install -Dm644 io.github.darimarchive_glitch.Auralis.svg /app/share/icons/hicolor/scalable/apps/io.github.darimarchive_glitch.Auralis.svg
+    sources:
+      - type: dir
+        path: ../../build/linux/x64/release/bundle
+        dest: bundle
+      - type: script
+        dest-filename: auralis-reader
+        commands:
+          - exec /app/auralis/auralis_reader "$@"
+      - type: file
+        path: io.github.darimarchive_glitch.Auralis.desktop
+      - type: file
+        path: io.github.darimarchive_glitch.Auralis.svg

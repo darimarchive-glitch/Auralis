@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Auralis Reader
+Comment=Leia livros com narração neural local
+Exec=auralis-reader
+Icon=io.github.darimarchive_glitch.Auralis
+Terminal=false
+Categories=Office;Education;
+Keywords=book;reader;tts;epub;pdf;livro;leitor;
+StartupNotify=true

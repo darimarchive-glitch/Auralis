@@ -1,0 +1,43 @@
+name: Linux Flatpak
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  flatpak:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev flatpak flatpak-builder
+      - name: Generate native runners
+        run: python tool/bootstrap.py
+      - name: Test
+        run: flutter test
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+      - name: Build Linux bundle
+        run: flutter build linux --release
+      - name: Add Flathub
+        run: flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+      - name: Install Flatpak SDK
+        run: flatpak install --user -y flathub org.gnome.Platform//50 org.gnome.Sdk//50
+      - name: Build Flatpak repository
+        run: flatpak-builder --user --force-clean --repo=flatpak-repo build-flatpak packaging/flatpak/io.github.darimarchive_glitch.Auralis.yml
+      - name: Create Flatpak bundle
+        run: |
+          mkdir -p dist
+          flatpak build-bundle flatpak-repo dist/Auralis-Reader-2.0.0.flatpak io.github.darimarchive_glitch.Auralis stable
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Auralis-Reader-2.0.0-Flatpak
+          path: dist/Auralis-Reader-2.0.0.flatpak
+          if-no-files-found: error

@@ -23,18 +23,16 @@ class AppController extends ChangeNotifier {
   }
 
   Future<BookMetadata?> importBook() async {
-    final result = await FilePicker.platform.pickFiles(
+    final picked = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: BookImporter.supportedExtensions,
-      withData: false,
-      withReadStream: true,
     );
-    if (result == null || result.files.isEmpty) return null;
+    if (picked == null) return null;
     busy = true;
     status = 'Importando e extraindo o texto…';
     notifyListeners();
     try {
-      final book = await repository.importPlatformFile(result.files.single);
+      final book = await repository.importPlatformFile(picked);
       books = [book, ...books];
       await repository.saveLibrary(books);
       return book;

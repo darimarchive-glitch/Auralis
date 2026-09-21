@@ -64,15 +64,16 @@ class BookRepository {
     final safeName = picked.name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
     final stored = File(p.join(dir.path, safeName));
 
-    if (picked.path != null) {
-      await File(picked.path!).copy(stored.path);
-    } else if (picked.bytes != null) {
-      await stored.writeAsBytes(picked.bytes!, flush: true);
-    } else if (picked.readStream != null) {
-      final sink = stored.openWrite();
-      await picked.readStream!.pipe(sink);
-    } else {
-      throw const BookImportException('O seletor de arquivos não forneceu acesso ao arquivo.');
+    final sink = stored.openWrite();
+    try {
+      await picked.readAsByteStream().pipe(sink);
+    } catch (_) {
+      await sink.close();
+      if (picked.path != null) {
+        await File(picked.path!).copy(stored.path);
+      } else {
+        rethrow;
+      }
     }
 
     try {

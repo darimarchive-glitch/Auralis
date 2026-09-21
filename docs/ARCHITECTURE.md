@@ -1,31 +1,22 @@
-# Arquitetura do Auralis Reader 1.2
+# Auralis 2.0 architecture
 
-## Camadas
+## Core flow
 
-- `BookImporter`: identifica o formato e extrai texto/chapter data.
-- `BookRepository`: persiste biblioteca, configurações e conteúdo extraído.
-- `AppController`: estado global da biblioteca/configurações.
-- `ReaderController`: navegação, progresso e fila sequencial de trechos narrados.
-- `LocalTtsService`: fachada de narração. Decide entre backend neural e TTS do sistema.
-- `NeuralTtsService`: download, validação, instalação, inferência Supertonic 3 e reprodução.
+1. `AppController` owns library/settings state.
+2. `BookRepository` stores imported copies, extracted content and progress.
+3. `BookImporter` parses supported formats into chapters.
+4. `ReaderController` turns chapters into speech chunks and advances only after each utterance finishes.
+5. `LocalTtsService` routes speech to neural TTS or the operating system.
+6. `NeuralTtsService` downloads and verifies the model, keeps the ONNX TTS instance in a background isolate, writes a temporary WAV, plays it locally and removes it.
 
-## Backend neural
+## Why Supertonic 3
 
-O modelo não é enviado no APK. `NeuralTtsService` baixa o arquivo oficial compatível com sherpa-onnx e valida o SHA-256 antes de extrair.
+The project needs voices that are materially more natural than classic Android/Linux TTS while remaining free of per-request tokens. Supertonic 3 is a compact multilingual ONNX model designed for on-device inference. The app uses the official sherpa-onnx compatible INT8 model package.
 
-A instância `OfflineTts` vive em um isolate persistente. Assim, o modelo não precisa ser recarregado para cada trecho e a chamada de inferência não bloqueia o isolate da interface. O isolate retorna um caminho de WAV temporário; o isolate principal usa `audioplayers` para reproduzi-lo e remove o arquivo após a conclusão.
+## Packaging
 
-`ReaderController.play()` continua aguardando cada chamada `speak()`. Isso preserva a lógica existente de avançar um trecho apenas depois que o áudio anterior terminou.
+- Android: Flutter release APK.
+- Windows: Flutter native bundle wrapped by Inno Setup.
+- Linux: Flutter native bundle copied into a GNOME 50 Flatpak runtime.
 
-Ao pausar durante uma inferência, o worker neural é encerrado. Na próxima reprodução ele é recriado. Durante reprodução de WAV, apenas o player é interrompido e o modelo permanece carregado.
-
-## Fallback
-
-Se o backend configurado for neural, mas o modelo não estiver instalado ou o idioma não fizer parte dos 31 idiomas suportados, `LocalTtsService` usa o TTS do sistema. Isso evita tornar o leitor inutilizável antes do download.
-
-## Dados
-
-- Livros e progresso: diretório de suporte do app.
-- Modelo neural: `<support>/tts_models/supertonic3/`.
-- WAVs gerados: diretório temporário e removidos depois da reprodução.
-- Não existe servidor próprio do Auralis.
+All three are built independently in GitHub Actions so a platform-specific failure does not hide the status of the other platforms.

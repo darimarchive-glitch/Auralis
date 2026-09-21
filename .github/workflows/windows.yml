@@ -1,0 +1,37 @@
+name: Windows EXE
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: Generate native runners
+        run: python tool/bootstrap.py
+      - name: Test
+        run: flutter test
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos
+      - name: Build Windows
+        run: flutter build windows --release
+      - name: Install Inno Setup
+        shell: powershell
+        run: choco install innosetup -y --no-progress
+      - name: Build installer
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\windows\Auralis.iss
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Auralis-Reader-2.0.0-Windows
+          path: dist/Auralis-Reader-2.0.0-Setup.exe
+          if-no-files-found: error
