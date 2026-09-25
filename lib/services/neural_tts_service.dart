@@ -191,6 +191,30 @@ class NeuralTtsService {
     _downloading = true;
     final root = await _ttsRoot();
     await root.create(recursive: true);
+
+    // Limpa resíduos do instalador 2.0.x. Se o Android encerrasse o processo
+    // durante a antiga etapa de verificação/descompactação, o arquivo de
+    // ~123 MiB e a pasta de staging podiam permanecer ocupando espaço.
+    final legacyArchive = File(
+      p.join(
+        root.path,
+        'sherpa-onnx-supertonic-3-tts-int8-2026-05-11.tar.bz2',
+      ),
+    );
+    final legacyStaging = Directory(
+      p.join(root.path, '.supertonic3-staging'),
+    );
+    if (await legacyArchive.exists()) {
+      try {
+        await legacyArchive.delete();
+      } catch (_) {}
+    }
+    if (await legacyStaging.exists()) {
+      try {
+        await legacyStaging.delete(recursive: true);
+      } catch (_) {}
+    }
+
     final staging = Directory(p.join(root.path, '.supertonic3-download'));
     final target = await modelDirectory();
 
