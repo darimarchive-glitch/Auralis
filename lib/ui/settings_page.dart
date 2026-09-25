@@ -151,7 +151,7 @@ class _SettingsPageState extends State<SettingsPage> {
             segments: const [
               ButtonSegment(
                 value: ThemeMode.system,
-                label: Text('Sistema'),
+                label: Text('Natural'),
                 icon: Icon(Icons.brightness_auto),
               ),
               ButtonSegment(
@@ -173,7 +173,7 @@ class _SettingsPageState extends State<SettingsPage> {
           Text('Narração', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 6),
           Text(
-            'O modo Neural usa o Supertonic 3 diretamente no aparelho. Depois do download inicial, o texto do livro não precisa ser enviado para um servidor de voz.',
+            'No Android, o modo Natural prioriza as melhores vozes do mecanismo instalado e permite acompanhar a fala palavra a palavra. O modo Offline usa Supertonic 3 inteiramente no aparelho.',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 16),
@@ -181,13 +181,13 @@ class _SettingsPageState extends State<SettingsPage> {
             segments: const [
               ButtonSegment(
                 value: TtsBackend.neural,
-                label: Text('Neural'),
-                icon: Icon(Icons.auto_awesome),
+                label: Text('Offline'),
+                icon: Icon(Icons.offline_bolt_rounded),
               ),
               ButtonSegment(
                 value: TtsBackend.system,
                 label: Text('Sistema'),
-                icon: Icon(Icons.record_voice_over_outlined),
+                icon: Icon(Icons.graphic_eq_rounded),
               ),
             ],
             selected: {settings.ttsBackend},
@@ -258,7 +258,7 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           const SizedBox(height: 32),
           const Text(
-            'Privacidade: a biblioteca e o progresso ficam no dispositivo. No modo Neural, a internet é usada apenas para baixar o modelo de voz; a síntese é feita localmente.',
+            'Privacidade: biblioteca e progresso ficam no dispositivo. No modo Offline, a síntese é local. No modo Natural, uma voz marcada como “online” pode usar a rede do mecanismo TTS do sistema.',
           ),
         ],
       ),
@@ -305,7 +305,7 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
               const SizedBox(height: 8),
               const Text(
-                '10 vozes e suporte a português. O download tem cerca de 123 MB e é feito uma única vez.',
+                '10 vozes e suporte a português. Agora os arquivos do modelo são baixados diretamente, sem descompactação pesada no Android (~145 MB).',
               ),
               if (_downloadingNeural) ...[
                 const SizedBox(height: 14),
@@ -317,7 +317,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 FilledButton.icon(
                   onPressed: _downloadNeuralVoice,
                   icon: const Icon(Icons.download),
-                  label: const Text('Baixar voz neural (~123 MB)'),
+                  label: const Text('Baixar voz offline (~145 MB)'),
                 ),
               ],
             ],
@@ -348,12 +348,12 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         const SizedBox(height: 16),
         DropdownButtonFormField<int>(
-          initialValue: settings.neuralSteps,
+          initialValue: settings.neuralSteps.clamp(8, 16).toInt(),
           decoration: const InputDecoration(labelText: 'Síntese neural'),
           items: const [
-            DropdownMenuItem(value: 6, child: Text('Rápida — 6 etapas')),
             DropdownMenuItem(value: 8, child: Text('Equilibrada — 8 etapas')),
-            DropdownMenuItem(value: 12, child: Text('Detalhada — 12 etapas')),
+            DropdownMenuItem(value: 12, child: Text('Natural — 12 etapas (recomendado)')),
+            DropdownMenuItem(value: 16, child: Text('Máxima qualidade — 16 etapas')),
           ],
           onChanged: (value) {
             if (value != null) _save(settings.copyWith(neuralSteps: value));
@@ -384,7 +384,9 @@ class _SettingsPageState extends State<SettingsPage> {
     return Column(
       children: [
         Text(
-          'Usa o mecanismo TTS instalado no sistema. A qualidade depende das vozes disponíveis no aparelho.',
+          Platform.isAndroid
+              ? 'Recomendado no Android. O Auralis prioriza Google Speech Services e vozes de alta qualidade/online quando disponíveis. Esse modo também permite realce palavra a palavra durante a leitura.'
+              : 'Usa a melhor voz disponível no sistema operacional. A qualidade depende das vozes instaladas.',
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         if (Platform.isAndroid && _engines.isNotEmpty) ...[
@@ -429,7 +431,7 @@ class _SettingsPageState extends State<SettingsPage> {
             items: [
               const DropdownMenuItem<String?>(
                 value: null,
-                child: Text('Automática — melhor disponível'),
+                child: Text('Automática — voz mais natural disponível'),
               ),
               ..._voices!
                   .where(

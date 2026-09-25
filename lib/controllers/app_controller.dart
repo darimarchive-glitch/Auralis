@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 
@@ -20,6 +22,19 @@ class AppController extends ChangeNotifier {
   Future<void> init() async {
     books = await repository.loadLibrary();
     settings = await repository.loadSettings();
+
+    // Auralis 2.1 muda a recomendação no Android: prioriza a melhor voz
+    // natural instalada no sistema, que costuma soar mais humana e também
+    // oferece marcação palavra a palavra. O Supertonic continua disponível
+    // como opção 100% offline.
+    if (Platform.isAndroid && settings.voiceModeVersion < 2) {
+      settings = settings.copyWith(
+        ttsBackend: TtsBackend.system,
+        clearVoice: true,
+        voiceModeVersion: 2,
+      );
+      await repository.saveSettings(settings);
+    }
   }
 
   Future<BookMetadata?> importBook() async {

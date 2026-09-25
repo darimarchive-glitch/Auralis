@@ -16,4 +16,13 @@ void main() {
   test('identifica português por heurística', () {
     expect(TextNormalizer.guessLanguage('Esta é uma história que foi escrita para as pessoas e com muito cuidado.'), 'pt-BR');
   });
+
+  test('mantém blocos de fala curtos para acompanhamento visual', () {
+    final chunks = TextNormalizer.speechChunks(
+      'Uma frase curta. Outra frase curta. Esta frase é muito longa, possui uma pausa, continua depois da vírgula, e deve ser dividida de forma legível para acompanhar a narração.',
+      maxChars: 70,
+    );
+    expect(chunks.length, greaterThan(2));
+    expect(chunks.every((chunk) => chunk.length <= 70), isTrue);
+  });
 }

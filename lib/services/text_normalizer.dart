@@ -5,7 +5,6 @@ class TextNormalizer {
         .replaceAll('\r\n', '\n')
         .replaceAll('\r', '\n');
 
-    // Repara palavras quebradas por hifenização de fim de linha.
     text = text.replaceAllMapped(
       RegExp(r'(\p{L})-\s*\n\s*(\p{L})', unicode: true),
       (match) => '${match.group(1)}${match.group(2)}',
@@ -36,7 +35,10 @@ class TextNormalizer {
         .trim();
   }
 
-  static List<String> speechChunks(String input, {int maxChars = 360}) {
+  /// Blocos curtos deixam o leitor visual acompanhar a narração sem perder
+  /// contexto. Cada sentença vira um bloco; sentenças longas são quebradas
+  /// preferencialmente em vírgulas, ponto e vírgula, dois-pontos e travessões.
+  static List<String> speechChunks(String input, {int maxChars = 240}) {
     final text = clean(input);
     if (text.isEmpty) return const [];
 
@@ -45,43 +47,69 @@ class TextNormalizer {
       dotAll: true,
       unicode: true,
     );
+
     final sentences = sentenceLike
         .allMatches(text)
         .map((match) => match.group(0)!.trim())
+        .where((value) => value.isNotEmpty);
+
+    final chunks = <String>[];
+    for (final sentence in sentences) {
+      if (sentence.length <= maxChars) {
+        chunks.add(sentence);
+      } else {
+        chunks.addAll(_splitLongSentence(sentence, maxChars));
+      }
+    }
+
+    if (chunks.isEmpty) return _hardSplit(text, maxChars);
+    return chunks;
+  }
+
+  static List<String> _splitLongSentence(String sentence, int maxChars) {
+    final clauses = RegExp(r'[^,;:—–]+(?:[,;:—–]+|$)', unicode: true)
+        .allMatches(sentence)
+        .map((m) => m.group(0)!.trim())
         .where((value) => value.isNotEmpty)
         .toList();
 
-    if (sentences.isEmpty) return _hardSplit(text, maxChars);
+    if (clauses.length <= 1) return _hardSplit(sentence, maxChars);
 
-    final chunks = <String>[];
+    final result = <String>[];
     var current = StringBuffer();
-    for (final sentence in sentences) {
-      if (sentence.length > maxChars) {
-        if (current.isNotEmpty) {
-          chunks.add(current.toString().trim());
-          current = StringBuffer();
-        }
-        chunks.addAll(_hardSplit(sentence, maxChars));
+
+    void flush() {
+      final value = current.toString().trim();
+      if (value.isNotEmpty) result.add(value);
+      current = StringBuffer();
+    }
+
+    for (final clause in clauses) {
+      if (clause.length > maxChars) {
+        flush();
+        result.addAll(_hardSplit(clause, maxChars));
         continue;
       }
 
-      if (current.length + sentence.length + 1 > maxChars && current.isNotEmpty) {
-        chunks.add(current.toString().trim());
-        current = StringBuffer();
+      if (current.isNotEmpty &&
+          current.length + clause.length + 1 > maxChars) {
+        flush();
       }
       if (current.isNotEmpty) current.write(' ');
-      current.write(sentence);
+      current.write(clause);
     }
-    if (current.isNotEmpty) chunks.add(current.toString().trim());
-    return chunks;
+    flush();
+    return result;
   }
 
   static List<String> _hardSplit(String text, int maxChars) {
     final words = text.split(RegExp(r'\s+'));
     final chunks = <String>[];
     var current = StringBuffer();
+
     for (final word in words) {
-      if (current.length + word.length + 1 > maxChars && current.isNotEmpty) {
+      if (current.length + word.length + 1 > maxChars &&
+          current.isNotEmpty) {
         chunks.add(current.toString().trim());
         current = StringBuffer();
       }
@@ -102,6 +130,7 @@ class TextNormalizer {
       'de-DE': [' der ', ' die ', ' das ', ' und ', ' ist ', ' mit ', ' ein ', ' nicht '],
       'it-IT': [' che ', ' di ', ' la ', ' il ', ' una ', ' con ', ' per ', ' non '],
     };
+
     var best = 'pt-BR';
     var bestScore = -1;
     for (final entry in scores.entries) {

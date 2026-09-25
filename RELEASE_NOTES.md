@@ -1,22 +1,26 @@
 # Release notes
 
+## 2.1.0
+
+- Novo modo **Natural** recomendado no Android: prioriza Google Speech Services e as vozes de maior qualidade disponíveis no aparelho.
+- Seleção de voz corrigida para favorecer qualidade HIGH/VERY_HIGH e vozes neurais/online quando disponíveis.
+- Acompanhamento **palavra a palavra** usando os offsets nativos do Android TTS.
+- Nova interface de leitura com cartão “Ouvindo agora”, palavra atual em destaque, contexto atenuado, auto-scroll e controles maiores.
+- O modo Supertonic passa a se chamar **Offline** e continua disponível sem API paga.
+- Supertonic offline agora usa 12 etapas por padrão e oferece 8/12/16 etapas.
+- Instalação offline refeita: não existe mais download de .tar.bz2 nem etapa pesada de descompactação.
+- Os 7 arquivos finais do Supertonic são baixados diretamente do repositório fixado no Hugging Face.
+- SHA-256 é calculado durante o próprio download dos arquivos grandes; não há uma segunda leitura pesada na etapa “verificando”.
+- Downloads são gravados em staging e só substituem o modelo instalado após todos os arquivos passarem pela validação.
+- Frases de leitura foram encurtadas e sentenças longas são quebradas por pontuação para melhorar acompanhamento e cadência.
+
 ## 2.0.1
 
 - Corrige o travamento/fechamento no Android durante a instalação da voz neural.
-- A verificação SHA-256 e a descompactação BZip2/TAR do modelo agora rodam em isolate de segundo plano.
-- A interface continua responsiva durante a etapa pesada de instalação.
-- Extração configurada com buffer limitado para reduzir picos de memória.
-- Mantidas as 10 vozes Supertonic 3 e o fallback para TTS do sistema.
+- A verificação SHA-256 e a descompactação BZip2/TAR do modelo passam para isolate de segundo plano.
 
 ## 2.0.0
 
-- Reorganização do Auralis como projeto multiplataforma limpo.
-- Branch `legacy-1.2` criada antes da migração.
-- Dependências atualizadas para o ecossistema Flutter de setembro de 2026.
-- `file_picker` migrado para a API 13.1.0.
-- `pdfrx` 2.6.5 inicializado corretamente antes de usar as APIs de PDF.
-- `sherpa_onnx` 1.13.8 como runtime de TTS neural offline.
-- Supertonic 3 INT8 como voz neural principal, com 10 speakers e 31 idiomas.
-- Download do modelo com SHA-256 e armazenamento local.
-- TTS do sistema preservado como fallback.
-- GitHub Actions independentes para APK Android, instalador EXE do Windows e Flatpak Linux.
+- Reorganização do Auralis como projeto multiplataforma.
+- APK Android, instalador Windows e Flatpak Linux via GitHub Actions.
+- Supertonic 3 INT8 como TTS neural local.

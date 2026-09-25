@@ -1,5 +1,5 @@
 #define MyAppName "Auralis Reader"
-#define MyAppVersion "2.0.1"
+#define MyAppVersion "2.1.0"
 #define MyAppExeName "auralis_reader.exe"
 
 [Setup]
@@ -11,7 +11,7 @@ DefaultDirName={autopf}\Auralis Reader
 DefaultGroupName=Auralis Reader
 DisableProgramGroupPage=yes
 OutputDir=..\..\dist
-OutputBaseFilename=Auralis-Reader-2.0.1-Setup
+OutputBaseFilename=Auralis-Reader-2.1.0-Setup
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern

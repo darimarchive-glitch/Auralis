@@ -6,6 +6,12 @@ import 'package:flutter_tts/flutter_tts.dart';
 import '../models/settings.dart';
 import 'neural_tts_service.dart';
 
+typedef TtsProgressCallback = void Function(
+  int start,
+  int end,
+  String word,
+);
+
 class TtsVoice {
   const TtsVoice({
     required this.name,
@@ -25,7 +31,7 @@ class TtsVoice {
 
   bool get isEnhanced {
     final lower = name.toLowerCase();
-    return quality != null && quality! >= 300 ||
+    return (quality ?? 0) >= 400 ||
         lower.contains('neural') ||
         lower.contains('natural') ||
         lower.contains('wavenet') ||
@@ -34,9 +40,21 @@ class TtsVoice {
         lower.contains('premium');
   }
 
+  int get naturalScore {
+    var score = quality ?? 0;
+    if (isEnhanced) score += 500;
+    if (networkRequired) score += 180;
+    final lower = name.toLowerCase();
+    if (lower.contains('studio')) score += 100;
+    if (lower.contains('wavenet')) score += 90;
+    if (lower.contains('neural')) score += 80;
+    if (lower.contains('natural')) score += 70;
+    return score;
+  }
+
   String get label {
     final badges = <String>[];
-    if (isEnhanced) badges.add('natural');
+    if (isEnhanced) badges.add('alta qualidade');
     if (networkRequired) badges.add('online');
     final suffix = badges.isEmpty ? '' : ' • ${badges.join(' • ')}';
     return '$name — $locale$suffix';
@@ -49,6 +67,7 @@ class LocalTtsService {
   Process? _linuxProcess;
   bool _configured = false;
   String? _activeEngine;
+  TtsProgressCallback? _systemProgress;
 
   Future<bool> neuralModelInstalled() => neural.isInstalled();
 
@@ -63,6 +82,10 @@ class LocalTtsService {
     if (_configured || Platform.isLinux) return;
     await _tts.awaitSpeakCompletion(true);
     await _tts.setVolume(1.0);
+    _tts.setProgressHandler((text, start, end, word) {
+      final callback = _systemProgress;
+      if (callback != null) callback(start, end, word);
+    });
     _configured = true;
   }
 
@@ -71,7 +94,11 @@ class LocalTtsService {
     await _configure();
     final raw = await _tts.getEngines;
     if (raw is! List) return const [];
-    return raw.map((e) => e.toString()).where((e) => e.isNotEmpty).toList()..sort();
+    return raw
+      .map((e) => e.toString())
+      .where((e) => e.isNotEmpty)
+      .toList()
+      ..sort();
   }
 
   Future<String?> defaultEngine() async {
@@ -113,8 +140,11 @@ class LocalTtsService {
 
   Future<List<TtsVoice>> voices({String? engine}) async {
     if (Platform.isLinux) {
-      return const [TtsVoice(name: 'Voz do sistema Linux', locale: 'system')];
+      return const [
+        TtsVoice(name: 'Voz do sistema Linux', locale: 'system'),
+      ];
     }
+
     await _configure();
     if (Platform.isAndroid) {
       if (engine != null) {
@@ -126,32 +156,33 @@ class LocalTtsService {
 
     final raw = await _tts.getVoices;
     if (raw is! List) return [];
+
     final result = <TtsVoice>[];
     for (final item in raw) {
-      if (item is Map) {
-        final name = item['name']?.toString();
-        final locale = item['locale']?.toString();
-        if (name == null || locale == null) continue;
-        result.add(
-          TtsVoice(
-            name: name,
-            locale: locale,
-            quality: int.tryParse(item['quality']?.toString() ?? ''),
-            latency: int.tryParse(item['latency']?.toString() ?? ''),
-            networkRequired: item['network_required'] == true ||
-                item['network_required']?.toString() == 'true',
-            features: item['features'] is Iterable
-                ? (item['features'] as Iterable).map((e) => e.toString()).toList()
-                : const <String>[],
-          ),
-        );
-      }
+      if (item is! Map) continue;
+      final name = item['name']?.toString();
+      final locale = item['locale']?.toString();
+      if (name == null || locale == null) continue;
+
+      result.add(
+        TtsVoice(
+          name: name,
+          locale: locale,
+          quality: int.tryParse(item['quality']?.toString() ?? ''),
+          latency: int.tryParse(item['latency']?.toString() ?? ''),
+          networkRequired: item['network_required'] == true ||
+              item['network_required']?.toString() == 'true',
+          features: item['features'] is Iterable
+              ? (item['features'] as Iterable)
+                  .map((e) => e.toString())
+                  .toList()
+              : const <String>[],
+        ),
+      );
     }
 
     result.sort((a, b) {
-      final enhanced = b.isEnhanced.toString().compareTo(a.isEnhanced.toString());
-      if (enhanced != 0) return enhanced;
-      final quality = (b.quality ?? 0).compareTo(a.quality ?? 0);
+      final quality = b.naturalScore.compareTo(a.naturalScore);
       if (quality != 0) return quality;
       final locale = a.locale.compareTo(b.locale);
       if (locale != 0) return locale;
@@ -160,17 +191,32 @@ class LocalTtsService {
     return result;
   }
 
-  TtsVoice? bestVoiceForLanguage(List<TtsVoice> voices, String language) {
+  TtsVoice? bestVoiceForLanguage(
+    List<TtsVoice> voices,
+    String language,
+  ) {
     if (voices.isEmpty) return null;
+
     final normalized = language.toLowerCase().replaceAll('_', '-');
     final languageCode = normalized.split('-').first;
     final exact = voices
-        .where((v) => v.locale.toLowerCase().replaceAll('_', '-') == normalized)
-        .toList();
+        .where(
+          (voice) =>
+              voice.locale.toLowerCase().replaceAll('_', '-') == normalized,
+        )
+        .toList()
+      ..sort((a, b) => b.naturalScore.compareTo(a.naturalScore));
     if (exact.isNotEmpty) return exact.first;
+
     final sameLanguage = voices
-        .where((v) => v.locale.toLowerCase().startsWith(languageCode))
-        .toList();
+        .where(
+          (voice) =>
+              voice.locale.toLowerCase().replaceAll('_', '-').startsWith(
+                    languageCode,
+                  ),
+        )
+        .toList()
+      ..sort((a, b) => b.naturalScore.compareTo(a.naturalScore));
     return sameLanguage.isNotEmpty ? sameLanguage.first : null;
   }
 
@@ -178,12 +224,13 @@ class LocalTtsService {
     String text, {
     required String language,
     required double rate,
-    TtsBackend backend = TtsBackend.neural,
+    TtsBackend backend = TtsBackend.system,
     int neuralVoiceId = 0,
-    int neuralSteps = 8,
+    int neuralSteps = 12,
     String? voiceName,
     String? voiceLocale,
     String? engine,
+    TtsProgressCallback? onProgress,
   }) async {
     if (text.trim().isEmpty) return;
 
@@ -210,6 +257,7 @@ class LocalTtsService {
       voiceName: voiceName,
       voiceLocale: voiceLocale,
       engine: engine,
+      onProgress: onProgress,
     );
   }
 
@@ -220,11 +268,13 @@ class LocalTtsService {
     String? voiceName,
     String? voiceLocale,
     String? engine,
+    TtsProgressCallback? onProgress,
   }) async {
     if (Platform.isLinux) {
       await _speakLinux(text, language: language, rate: rate);
       return;
     }
+
     await _configure();
     if (Platform.isAndroid) {
       if (engine != null) {
@@ -236,8 +286,8 @@ class LocalTtsService {
 
     final selectedLocale = voiceLocale ?? language;
     await _tts.setLanguage(selectedLocale);
-    await _tts.setSpeechRate(rate.clamp(0.15, 0.9).toDouble());
-    await _tts.setPitch(0.98);
+    await _tts.setSpeechRate(rate.clamp(0.15, 0.85).toDouble());
+    await _tts.setPitch(1.0);
 
     if (voiceName != null && voiceLocale != null) {
       await _tts.setVoice({'name': voiceName, 'locale': voiceLocale});
@@ -248,15 +298,21 @@ class LocalTtsService {
         await _tts.setVoice({'name': best.name, 'locale': best.locale});
       }
     }
-    await _tts.speak(text);
+
+    _systemProgress = onProgress;
+    try {
+      await _tts.speak(text);
+    } finally {
+      _systemProgress = null;
+    }
   }
 
   Future<void> preview({
     required String language,
     required double rate,
-    TtsBackend backend = TtsBackend.neural,
+    TtsBackend backend = TtsBackend.system,
     int neuralVoiceId = 0,
-    int neuralSteps = 8,
+    int neuralSteps = 12,
     String? voiceName,
     String? voiceLocale,
     String? engine,
@@ -298,7 +354,9 @@ class LocalTtsService {
   }) async {
     await _stopSystemOnly();
     final locale = language.toLowerCase().replaceAll('_', '-');
-    final speed = (80 + rate.clamp(0.15, 0.9).toDouble() * 260).round();
+    final speed =
+        (80 + rate.clamp(0.15, 0.85).toDouble() * 260).round();
+
     if (await _commandExists('spd-say')) {
       final spdRate = (((rate - 0.5) * 180).clamp(-100, 100)).round();
       _linuxProcess = await Process.start(
@@ -320,6 +378,7 @@ class LocalTtsService {
         'Instale speech-dispatcher ou espeak-ng para ativar a narração do sistema no Linux.',
       );
     }
+
     await _linuxProcess!.exitCode;
     _linuxProcess = null;
   }
@@ -333,6 +392,7 @@ class LocalTtsService {
   }
 
   Future<void> _stopSystemOnly() async {
+    _systemProgress = null;
     if (Platform.isLinux) {
       _linuxProcess?.kill(ProcessSignal.sigterm);
       _linuxProcess = null;

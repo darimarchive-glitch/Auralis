@@ -1,4 +1,4 @@
-# Auralis Reader 2.0
+# Auralis Reader 2.1
 
 Auralis é um leitor universal multiplataforma para **Android, Windows e Linux**, com foco em leitura confortável e narração por voz neural local.
 
@@ -6,7 +6,7 @@ A versão 2.0 foi reorganizada como um projeto limpo e mantém a versão anterio
 
 ## Vozes realistas e locais
 
-O modo principal de narração usa **Supertonic 3** através do `sherpa_onnx` 1.13.8. A síntese acontece no próprio aparelho, sem tokens e sem API de voz paga. O pacote neural é baixado uma única vez, verificado por SHA-256 e instalado no armazenamento privado do aplicativo.
+Há dois modos de narração. No **Android**, o modo **Natural** é recomendado: ele escolhe as melhores vozes do mecanismo TTS instalado (priorizando Google/vozes de alta qualidade) e habilita acompanhamento palavra a palavra. O modo **Offline** usa **Supertonic 3** via `sherpa_onnx` 1.13.8, sem tokens e sem API paga. O modelo offline é baixado arquivo a arquivo, com SHA-256 calculado durante o download, evitando a antiga descompactação pesada.
 
 O modelo oferece **10 vozes (F1–F5 e M1–M5)** e 31 idiomas, incluindo português, inglês, espanhol, francês, alemão, italiano, japonês e coreano. O Auralis também mantém o TTS do sistema como fallback.
 

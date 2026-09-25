@@ -25,9 +25,9 @@ jobs:
       - name: Rename APK
         run: |
           mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-release.apk dist/Auralis-Reader-2.0.1.apk
+          cp build/app/outputs/flutter-apk/app-release.apk dist/Auralis-Reader-2.1.0.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: Auralis-Reader-2.0.1-Android
-          path: dist/Auralis-Reader-2.0.1.apk
+          name: Auralis-Reader-2.1.0-Android
+          path: dist/Auralis-Reader-2.1.0.apk
           if-no-files-found: error

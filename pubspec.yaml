@@ -1,7 +1,7 @@
 name: auralis_reader
 description: Auralis Reader — leitor universal multiplataforma com TTS neural local.
 publish_to: 'none'
-version: 2.0.1+11
+version: 2.1.0+12
 
 environment:
   sdk: '>=3.13.0 <4.0.0'
@@ -13,6 +13,7 @@ dependencies:
   archive: ^4.3.0
   audioplayers: ^6.8.1
   crypto: ^3.0.6
+  convert: ^3.1.2
   file_picker: ^13.1.0
   flutter_tts: ^4.2.5
   html: ^0.15.7

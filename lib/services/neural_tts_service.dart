@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 
-import 'package:archive/archive_io.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:convert/convert.dart';
 import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -32,15 +32,17 @@ class NeuralModelProgress {
 
 class NeuralTtsService {
   static const modelName = 'Supertonic 3 INT8';
-  static const modelArchiveName =
-      'sherpa-onnx-supertonic-3-tts-int8-2026-05-11.tar.bz2';
-  static const modelFolderName =
-      'sherpa-onnx-supertonic-3-tts-int8-2026-05-11';
-  static const modelUrl =
-      'https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/$modelArchiveName';
-  static const modelArchiveBytes = 128774318;
-  static const modelSha256 =
-      '82fa96f91c4ef8abaae3a14a3f4153facf88bed821d1f7331cec2700f432c427';
+
+  // Pinamos o commit exato do espelho mantido pelo sherpa-onnx. Em vez de
+  // baixar um .tar.bz2 e descompactá-lo no Android, o Auralis baixa os
+  // arquivos finais diretamente. Isso elimina o pico de CPU/espaço temporário
+  // que fazia alguns aparelhos fecharem durante "Verificando download…".
+  static const _modelRevision =
+      'cca5a0e6c96e1d2c720986bf7e75fcc81dee3ae4';
+  static const _modelBaseUrl =
+      'https://huggingface.co/csukuangfj2/'
+      'sherpa-onnx-supertonic-3-tts-int8-2026-05-11/resolve/'
+      '$_modelRevision';
 
   static const voices = <NeuralVoice>[
     NeuralVoice(id: 0, name: 'F1', kind: 'feminina'),
@@ -89,6 +91,46 @@ class NeuralTtsService {
     'vi',
   };
 
+  static const _assets = <_ModelAsset>[
+    _ModelAsset(
+      name: 'duration_predictor.int8.onnx',
+      size: 3700147,
+      sha256:
+          'c3eb91414d5ff8a7a239b7fe9e34e7e2bf8a8140d8375ffb14718b1c639325db',
+    ),
+    _ModelAsset(
+      name: 'text_encoder.int8.onnx',
+      size: 36416150,
+      sha256:
+          'c7befd5ea8c3119769e8a6c1486c4edc6a3bc8365c67621c881bbb774b9902ff',
+    ),
+    _ModelAsset(name: 'tts.json', size: 8448),
+    _ModelAsset(
+      name: 'unicode_indexer.bin',
+      size: 262144,
+      sha256:
+          '8402ca48e5189a8950138580b0fff64db6f072f24ac07cd54ba8b2fbb9883b30',
+    ),
+    _ModelAsset(
+      name: 'vector_estimator.int8.onnx',
+      size: 78400833,
+      sha256:
+          '20cd86fa5c6effedfda0e7cffe5b0569ca401c440a0c3a1d72bf39286c0db3fd',
+    ),
+    _ModelAsset(
+      name: 'vocoder.int8.onnx',
+      size: 25991073,
+      sha256:
+          'e923d60f53f95eb1ce235f1dc33ec56d9c057823c96fa6f8acf98f32b0da6152',
+    ),
+    _ModelAsset(
+      name: 'voice.bin',
+      size: 517168,
+      sha256:
+          '67d5209b0ee8ce6c74105ffbe12fe6a7628aea3b4ba2fcb308a4a67938a93ce8',
+    ),
+  ];
+
   final AudioPlayer _player = AudioPlayer();
   Isolate? _worker;
   ReceivePort? _receivePort;
@@ -120,9 +162,12 @@ class NeuralTtsService {
     if (!supportedPlatform) return false;
     final dir = await modelDirectory();
     if (!await dir.exists()) return false;
-    for (final name in _requiredFiles) {
-      final file = File(p.join(dir.path, name));
-      if (!await file.exists() || await file.length() == 0) return false;
+    for (final asset in _assets) {
+      final file = File(p.join(dir.path, asset.name));
+      if (!await file.exists()) return false;
+      final length = await file.length();
+      if (length <= 0) return false;
+      if (asset.name != 'tts.json' && length != asset.size) return false;
     }
     return true;
   }
@@ -131,93 +176,78 @@ class NeuralTtsService {
     void Function(NeuralModelProgress progress)? onProgress,
   }) async {
     if (!supportedPlatform) {
-      throw UnsupportedError('A voz neural ainda não está disponível nesta plataforma.');
+      throw UnsupportedError(
+        'A voz neural ainda não está disponível nesta plataforma.',
+      );
     }
     if (_downloading) {
       throw StateError('O download da voz neural já está em andamento.');
     }
     if (await isInstalled()) {
-      onProgress?.call(const NeuralModelProgress(1, 'Voz neural instalada.'));
+      onProgress?.call(const NeuralModelProgress(1, 'Voz offline instalada.'));
       return;
     }
 
     _downloading = true;
     final root = await _ttsRoot();
     await root.create(recursive: true);
-    final archiveFile = File(p.join(root.path, modelArchiveName));
-    final staging = Directory(p.join(root.path, '.supertonic3-staging'));
+    final staging = Directory(p.join(root.path, '.supertonic3-download'));
     final target = await modelDirectory();
 
     try {
       if (await staging.exists()) await staging.delete(recursive: true);
-      if (await archiveFile.exists()) await archiveFile.delete();
-
-      onProgress?.call(const NeuralModelProgress(0, 'Baixando modelo neural…'));
-      await _download(archiveFile, onProgress);
-
-      onProgress?.call(
-        const NeuralModelProgress(
-          .82,
-          'Verificando e preparando a voz em segundo plano…',
-        ),
-      );
-
-      // SHA-256 + BZip2/TAR são operações pesadas de CPU. Executá-las no
-      // isolate da interface fazia o Android aparentar travar em
-      // "Verificando download…" e podia disparar um ANR em aparelhos mais
-      // lentos. Todo o trabalho pesado de instalação agora roda fora da UI.
       await staging.create(recursive: true);
-      final installError = await Isolate.run<String?>(() async {
-        try {
-          final digest = await sha256.bind(archiveFile.openRead()).first;
-          if (digest.toString() != modelSha256) {
-            return 'A verificação SHA-256 do modelo falhou. Tente baixar novamente.';
-          }
-          await extractFileToDisk(
-            archiveFile.path,
-            staging.path,
-            bufferSize: 256 * 1024,
-          );
-          return null;
-        } catch (e) {
-          return 'Falha ao preparar o modelo neural: $e';
-        }
-      });
-      if (installError != null) {
-        throw StateError(installError);
+
+      final totalWeight = _assets.fold<int>(0, (sum, asset) => sum + asset.size);
+      var finishedWeight = 0;
+
+      for (var i = 0; i < _assets.length; i++) {
+        final asset = _assets[i];
+        onProgress?.call(
+          NeuralModelProgress(
+            finishedWeight / totalWeight,
+            'Baixando voz offline • arquivo ${i + 1} de ${_assets.length}',
+          ),
+        );
+
+        await _downloadAsset(
+          asset,
+          File(p.join(staging.path, asset.name)),
+          onProgress: (received) {
+            final current = (received.clamp(0, asset.size) as int);
+            final progress =
+                ((finishedWeight + current) / totalWeight).clamp(0.0, .97);
+            onProgress?.call(
+              NeuralModelProgress(
+                progress,
+                'Baixando e verificando • ${i + 1}/${_assets.length}',
+              ),
+            );
+          },
+        );
+        finishedWeight += asset.size;
       }
 
       onProgress?.call(
-        const NeuralModelProgress(.94, 'Validando arquivos do modelo…'),
+        const NeuralModelProgress(.98, 'Finalizando instalação…'),
       );
-      final extracted = Directory(p.join(staging.path, modelFolderName));
-      if (!await extracted.exists()) {
-        throw StateError('O pacote da voz neural não contém a pasta esperada.');
-      }
-      for (final name in _requiredFiles) {
-        final file = File(p.join(extracted.path, name));
-        if (!await file.exists() || await file.length() == 0) {
-          throw StateError('Arquivo obrigatório ausente no modelo: $name');
-        }
-      }
 
       await stop();
       _resetWorker();
       if (await target.exists()) await target.delete(recursive: true);
-      await extracted.rename(target.path);
-      onProgress?.call(const NeuralModelProgress(.98, 'Finalizando instalação…'));
+      await staging.rename(target.path);
 
       if (!await isInstalled()) {
-        throw StateError('A voz neural foi extraída, mas a instalação não pôde ser validada.');
+        throw StateError(
+          'A voz offline foi baixada, mas a instalação não pôde ser validada.',
+        );
       }
-      onProgress?.call(const NeuralModelProgress(1, 'Voz neural pronta para uso.'));
+
+      onProgress?.call(
+        const NeuralModelProgress(1, 'Voz offline pronta para uso.'),
+      );
     } finally {
       _downloading = false;
-      if (await archiveFile.exists()) {
-        try {
-          await archiveFile.delete();
-        } catch (_) {}
-      }
       if (await staging.exists()) {
         try {
           await staging.delete(recursive: true);
@@ -226,45 +256,84 @@ class NeuralTtsService {
     }
   }
 
-  Future<void> _download(
-    File destination,
-    void Function(NeuralModelProgress progress)? onProgress,
-  ) async {
-    final client = HttpClient()..connectionTimeout = const Duration(seconds: 30);
+  Future<void> _downloadAsset(
+    _ModelAsset asset,
+    File destination, {
+    required void Function(int received) onProgress,
+  }) async {
+    final partial = File('${destination.path}.part');
+    if (await partial.exists()) await partial.delete();
+
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(seconds: 30)
+      ..idleTimeout = const Duration(seconds: 30);
     IOSink? sink;
+
     try {
-      final request = await client.getUrl(Uri.parse(modelUrl));
-      request.headers.set(HttpHeaders.userAgentHeader, 'Auralis-Reader/1.2');
+      final uri = Uri.parse('$_modelBaseUrl/${asset.name}?download=true');
+      final request = await client.getUrl(uri);
+      request.followRedirects = true;
+      request.maxRedirects = 8;
+      request.headers.set(
+        HttpHeaders.userAgentHeader,
+        'Auralis-Reader/2.1',
+      );
+
       final response = await request.close();
       if (response.statusCode != HttpStatus.ok) {
         throw HttpException(
-          'Falha ao baixar o modelo: HTTP ${response.statusCode}.',
-          uri: Uri.parse(modelUrl),
+          'Falha ao baixar ${asset.name}: HTTP ${response.statusCode}.',
+          uri: uri,
         );
       }
-      final total = response.contentLength > 0
-          ? response.contentLength
-          : modelArchiveBytes;
-      var received = 0;
-      final output = destination.openWrite();
+
+      final digestOutput = AccumulatorSink<Digest>();
+      final digestInput = sha256.startChunkedConversion(digestOutput);
+      final output = partial.openWrite();
       sink = output;
+      var received = 0;
+
       await for (final bytes in response) {
         output.add(bytes);
+        digestInput.add(bytes);
         received += bytes.length;
-        final networkProgress = (received / total).clamp(0.0, 1.0).toDouble();
-        onProgress?.call(
-          NeuralModelProgress(
-            networkProgress * .8,
-            'Baixando modelo neural… ${(networkProgress * 100).round()}%',
-          ),
-        );
+        onProgress(received);
       }
+
+      digestInput.close();
       await output.flush();
       await output.close();
       sink = null;
+
+      if (received != asset.size) {
+        throw StateError(
+          'Download incompleto de ${asset.name}: '
+          '$received de ${asset.size} bytes.',
+        );
+      }
+
+      if (asset.sha256 != null) {
+        final digest = digestOutput.events.single.toString();
+        if (digest != asset.sha256) {
+          throw StateError(
+            'A verificação de integridade de ${asset.name} falhou.',
+          );
+        }
+      }
+
+      await partial.rename(destination.path);
     } finally {
-      if (sink != null) await sink.close();
+      if (sink != null) {
+        try {
+          await sink.close();
+        } catch (_) {}
+      }
       client.close(force: true);
+      if (await partial.exists() && !await destination.exists()) {
+        try {
+          await partial.delete();
+        } catch (_) {}
+      }
     }
   }
 
@@ -287,7 +356,9 @@ class NeuralTtsService {
       throw UnsupportedError('O $modelName não oferece o idioma $language.');
     }
     if (!await isInstalled()) {
-      throw StateError('Baixe a voz neural nas configurações antes de usá-la.');
+      throw StateError(
+        'Baixe a voz offline nas configurações antes de usá-la.',
+      );
     }
 
     await _player.stop();
@@ -311,8 +382,8 @@ class NeuralTtsService {
         outputPath: output,
         language: _languageCode(language),
         sid: voiceId.clamp(0, 9).toInt(),
-        speed: (rate / .5).clamp(.6, 1.6).toDouble(),
-        numSteps: numSteps.clamp(4, 16).toInt(),
+        speed: (rate / .5).clamp(.65, 1.45).toDouble(),
+        numSteps: numSteps.clamp(6, 16).toInt(),
       ),
     );
 
@@ -370,7 +441,9 @@ class NeuralTtsService {
         }
       } else if (message is _NeuralWorkerError) {
         if (message.id == null) {
-          if (!ready.isCompleted) ready.completeError(StateError(message.message));
+          if (!ready.isCompleted) {
+            ready.completeError(StateError(message.message));
+          }
           _readyCompleter = null;
           _resetWorker();
         } else {
@@ -402,15 +475,19 @@ class NeuralTtsService {
       initializing.completeError(const _NeuralCancelled());
       _resetWorker();
     }
+
     final playbackCancelled = _playbackCancelled;
     if (playbackCancelled != null && !playbackCancelled.isCompleted) {
       playbackCancelled.complete();
     }
     _playbackCancelled = null;
     await _player.stop();
+
     if (_pending.isNotEmpty) {
       for (final completer in _pending.values) {
-        if (!completer.isCompleted) completer.completeError(const _NeuralCancelled());
+        if (!completer.isCompleted) {
+          completer.completeError(const _NeuralCancelled());
+        }
       }
       _pending.clear();
       _resetWorker();
@@ -436,16 +513,18 @@ class NeuralTtsService {
 
   static String _languageCode(String locale) =>
       locale.toLowerCase().replaceAll('_', '-').split('-').first;
+}
 
-  static const _requiredFiles = <String>[
-    'duration_predictor.int8.onnx',
-    'text_encoder.int8.onnx',
-    'vector_estimator.int8.onnx',
-    'vocoder.int8.onnx',
-    'tts.json',
-    'unicode_indexer.bin',
-    'voice.bin',
-  ];
+class _ModelAsset {
+  const _ModelAsset({
+    required this.name,
+    required this.size,
+    this.sha256,
+  });
+
+  final String name;
+  final int size;
+  final String? sha256;
 }
 
 class _NeuralBootstrap {
@@ -528,7 +607,7 @@ void _neuralWorkerMain(_NeuralBootstrap bootstrap) {
     tts = sherpa_onnx.OfflineTts(config);
     bootstrap.mainPort.send(_NeuralReady(tts.numSpeakers));
   } catch (e) {
-    bootstrap.mainPort.send(_NeuralWorkerError('Falha ao iniciar $e'));
+    bootstrap.mainPort.send(_NeuralWorkerError('Falha ao iniciar: $e'));
     receive.close();
     return;
   }
@@ -540,10 +619,13 @@ void _neuralWorkerMain(_NeuralBootstrap bootstrap) {
           sid: message.sid,
           speed: message.speed,
           numSteps: message.numSteps,
-          silenceScale: .2,
+          silenceScale: .18,
           extra: <String, Object>{'lang': message.language},
         );
-        final audio = tts!.generateWithConfig(text: message.text, config: config);
+        final audio = tts!.generateWithConfig(
+          text: message.text,
+          config: config,
+        );
         final ok = sherpa_onnx.writeWave(
           filename: message.outputPath,
           samples: audio.samples,
@@ -552,9 +634,13 @@ void _neuralWorkerMain(_NeuralBootstrap bootstrap) {
         if (!ok) {
           throw StateError('Não foi possível gravar o áudio temporário.');
         }
-        bootstrap.mainPort.send(_NeuralGenerated(message.id, message.outputPath));
+        bootstrap.mainPort.send(
+          _NeuralGenerated(message.id, message.outputPath),
+        );
       } catch (e) {
-        bootstrap.mainPort.send(_NeuralWorkerError('$e', id: message.id));
+        bootstrap.mainPort.send(
+          _NeuralWorkerError('$e', id: message.id),
+        );
       }
     } else if (message is _NeuralDispose) {
       tts?.free();
