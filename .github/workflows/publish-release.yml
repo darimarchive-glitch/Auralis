@@ -1,4 +1,4 @@
-name: Publish Auralis 2.0.1 Release
+name: Publish Auralis 2.1.0 Beta Release
 
 on:
   push:
@@ -23,46 +23,61 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          curl -L --fail             -H "Authorization: Bearer $GH_TOKEN"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/10660421988/zip"             -o /tmp/android.zip
+
+          curl -L --fail             -H "Authorization: Bearer $GH_TOKEN"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/10842222321/zip"             -o /tmp/android.zip
           unzip -q /tmp/android.zip -d dist
 
-          curl -L --fail             -H "Authorization: Bearer $GH_TOKEN"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/10659527806/zip"             -o /tmp/windows.zip
+          curl -L --fail             -H "Authorization: Bearer $GH_TOKEN"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/10841089914/zip"             -o /tmp/windows.zip
           unzip -q /tmp/windows.zip -d dist
 
-          curl -L --fail             -H "Authorization: Bearer $GH_TOKEN"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/10659997777/zip"             -o /tmp/flatpak.zip
+          curl -L --fail             -H "Authorization: Bearer $GH_TOKEN"             -H "X-GitHub-Api-Version: 2022-11-28"             "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/10842187095/zip"             -o /tmp/flatpak.zip
           unzip -q /tmp/flatpak.zip -d dist
 
-          find dist -maxdepth 2 -type f -print
+          cd dist
+          sha256sum             Auralis-Reader-2.1.0.apk             Auralis-Reader-2.1.0-Setup.exe             Auralis-Reader-2.1.0.flatpak > SHA256SUMS.txt
 
       - name: Prepare release notes
         run: |
           cat > /tmp/release.md <<'EOF'
-          ## Auralis Reader 2.0.1
+          ## Auralis Reader 2.1.0 Beta 1
 
-          Esta versão corrige o fechamento do aplicativo durante a instalação da voz neural no Android.
+          Versão de teste focada em três pontos: voz mais natural no Android, instalação de voz offline sem a antiga etapa pesada de verificação/descompactação e uma interface de leitura que acompanha a narração.
 
-          ### Downloads
-          - **Android:** `Auralis-Reader-2.0.1.apk`
-          - **Windows:** `Auralis-Reader-2.0.1-Setup.exe`
-          - **Linux:** `Auralis-Reader-2.0.1.flatpak`
+          ### Voz Natural no Android
+          - O modo **Natural** passa a ser recomendado no Android.
+          - O Auralis prioriza as vozes de maior qualidade informadas pelo mecanismo TTS instalado.
+          - Vozes online/neural/high-quality recebem prioridade quando o Android as disponibiliza.
+          - O leitor usa os speech marks do Android para realçar a **palavra exata** que está sendo falada.
 
-          ### Voz neural
-          - Supertonic 3 INT8 via sherpa-onnx
-          - 10 vozes neurais
-          - suporte a português e outros idiomas
-          - síntese local, sem API paga ou tokens
-          - modelo baixado sob demanda e validado por SHA-256
+          ### Voz Offline
+          - Supertonic 3 continua disponível como modo **Offline**.
+          - O Auralis não baixa mais um `.tar.bz2` de ~123 MB para depois verificar e descompactar.
+          - Os arquivos finais do modelo são baixados diretamente de uma revisão fixada do repositório do modelo.
+          - SHA-256 é calculado enquanto cada arquivo chega, evitando uma segunda leitura pesada.
+          - Restos do instalador 2.0.x são limpos antes do novo download.
+          - Qualidade offline: 8, 12 ou 16 etapas; 12 é o padrão.
 
-          ### Correção 2.0.1
-          A verificação SHA-256 e a descompactação BZip2/TAR do modelo agora rodam em um isolate separado, reduzindo o risco de ANR/fechamento durante a etapa “Verificando download…”.
+          ### Nova leitura acompanhada
+          - Cartão **Ouvindo agora** com o trecho atual em destaque.
+          - Palavra atual destacada no modo Natural.
+          - Auto-scroll acompanha a fala.
+          - Frases não ativas ficam visualmente atenuadas durante a reprodução.
+          - Barra de progresso de capítulo e controles de reprodução maiores.
+          - Frases longas são divididas em unidades menores para facilitar o acompanhamento.
 
-          Os três pacotes desta release foram gerados e validados por GitHub Actions.
+          ### Pacotes
+          - Android: `Auralis-Reader-2.1.0.apk`
+          - Windows: `Auralis-Reader-2.1.0-Setup.exe`
+          - Linux: `Auralis-Reader-2.1.0.flatpak`
+
+          Os testes, análise estática e builds dos três pacotes passaram no GitHub Actions. Esta release está marcada como **pré-release** porque a instalação do modelo e a seleção de voz precisam ser validadas em aparelhos Android reais.
           EOF
 
-      - name: Publish GitHub Release
+      - name: Publish GitHub prerelease
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release view v2.0.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 &&             gh release delete v2.0.1 --repo "$GITHUB_REPOSITORY" --yes || true
-          gh release create v2.0.1             --repo "$GITHUB_REPOSITORY"             --target bc98289c933912062433bdb37ce0451e120a7fb1             --title "Auralis Reader 2.0.1"             --notes-file /tmp/release.md             dist/Auralis-Reader-2.0.1.apk             dist/Auralis-Reader-2.0.1-Setup.exe             dist/Auralis-Reader-2.0.1.flatpak
+          gh release view v2.1.0-beta.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 &&             gh release delete v2.1.0-beta.1 --repo "$GITHUB_REPOSITORY" --yes || true
+
+          gh release create v2.1.0-beta.1             --repo "$GITHUB_REPOSITORY"             --target 4753b357719074d3a3cf4cfbeb474ee2dc78ade7             --title "Auralis Reader 2.1.0 Beta 1"             --prerelease             --notes-file /tmp/release.md             dist/Auralis-Reader-2.1.0.apk             dist/Auralis-Reader-2.1.0-Setup.exe             dist/Auralis-Reader-2.1.0.flatpak             dist/SHA256SUMS.txt
