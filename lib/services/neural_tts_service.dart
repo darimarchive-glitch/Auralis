@@ -214,7 +214,7 @@ class NeuralTtsService {
           asset,
           File(p.join(staging.path, asset.name)),
           onProgress: (received) {
-            final current = (received.clamp(0, asset.size) as int);
+            final current = received.clamp(0, asset.size);
             final progress =
                 ((finishedWeight + current) / totalWeight).clamp(0.0, .97);
             onProgress?.call(
