@@ -20,18 +20,18 @@ dev = ["pytest>=8.4", "ruff>=0.13"]
 auralis = "auralis.main:main"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
+package-dir = {"" = "."}
 include-package-data = true
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]\ninclude = ["auralis*"]
 
 [tool.setuptools.package-data]
 auralis = ["qml/*.qml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["."]
 
 [tool.ruff]
 target-version = "py311"

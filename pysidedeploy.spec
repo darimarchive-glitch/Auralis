@@ -12,7 +12,7 @@ packages = nuitka,ordered_set,zstandard
 android_packages = buildozer,cython
 
 [qt]
-qml_files = src/auralis/qml/Main.qml
+qml_files = auralis/qml/Main.qml
 excluded_qml_plugins = QtQuick3D,QtCharts,QtWebEngine,QtSensors
 modules = Quick,QuickControls2,Multimedia,TextToSpeech,Pdf,Network
 plugins =
@@ -24,7 +24,7 @@ plugins = platforms_qtforandroid
 
 [nuitka]
 mode = standalone
-extra_args = --quiet --assume-yes-for-downloads --noinclude-qt-translations --include-data-dir=src/auralis/qml=auralis/qml
+extra_args = --quiet --assume-yes-for-downloads --noinclude-qt-translations --include-data-dir=auralis/qml=auralis/qml
 
 [buildozer]
 mode = debug
