@@ -1,6 +1,12 @@
 # Third-party notices
 
-Auralis Reader source code is distributed under the MIT License. Third-party software and downloaded models remain under their respective licenses.
+Auralis Reader itself is proprietary software distributed under the Auralis
+Proprietary License. All rights in Auralis-owned source code, binaries,
+documentation, branding, and assets are reserved.
+
+Third-party software and downloaded models remain under their respective
+licenses. The proprietary Auralis license does not replace, narrow, or expand
+rights granted by those third-party licensors.
 
 ## sherpa-onnx
 
@@ -21,4 +27,6 @@ The model is not committed to this repository or bundled in the base application
 
 ## Other Flutter packages
 
-The project uses packages including `audioplayers`, `file_picker`, `pdfrx`, `archive`, `xml`, `html`, `path_provider` and `flutter_tts`. Refer to each package's repository/package page for its license and notices.
+The project uses packages including `audioplayers`, `file_picker`, `pdfrx`,
+`archive`, `xml`, `html`, `path_provider` and `flutter_tts`. Refer to
+each package's repository/package page for its license and notices.
