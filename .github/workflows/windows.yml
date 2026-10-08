@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['src/**','main.py','pyproject.toml','pysidedeploy.spec','.github/workflows/windows.yml']
+    paths: ['auralis/**','main.py','pyproject.toml','pysidedeploy.spec','.github/workflows/windows.yml']
 
 jobs:
   build:
@@ -19,8 +19,14 @@ jobs:
       - name: Tests
         shell: pwsh
         run: |
-          $env:PYTHONPATH='src'
+          $env:PYTHONPATH='.'
           pytest -q
+      - name: UI smoke test
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM='offscreen'
+          $env:AURALIS_SMOKE_TEST='1'
+          python main.py
       - name: Deploy
         run: pyside6-deploy main.py --name Auralis --force
       - name: Collect portable app

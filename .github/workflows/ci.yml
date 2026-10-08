@@ -16,8 +16,8 @@ jobs:
       - name: Install test tools
         run: python -m pip install --upgrade pip pytest ruff
       - name: Compile
-        run: python -m compileall -q src tests
+        run: python -m compileall -q auralis tests
       - name: Tests
-        run: PYTHONPATH=src pytest -q
+        run: PYTHONPATH=. pytest -q
       - name: Lint for fatal errors
-        run: ruff check --select F,E9 src tests
+        run: ruff check --select F,E9 auralis tests
