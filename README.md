@@ -99,6 +99,8 @@ Para builds reproduzíveis de distribuição, use os workflows em `.github/workf
 
 No modo neural, o texto do livro é processado localmente. A conexão de internet é usada para baixar o modelo; depois da instalação, a síntese não precisa de serviço de nuvem. No modo TTS do sistema, o comportamento de rede depende do mecanismo de voz instalado no sistema operacional.
 
-## Licenças
+## Licença
 
-O código do Auralis é MIT. Dependências e modelos mantêm suas licenças próprias; veja `THIRD_PARTY_NOTICES.md`.
+O código e os materiais próprios do Auralis são **proprietários** e estão sob **Todos os Direitos Reservados**. Não é permitida cópia, modificação, redistribuição, sublicenciamento ou uso comercial sem autorização prévia por escrito.
+
+Componentes de terceiros e modelos mantêm suas próprias licenças; veja `THIRD_PARTY_NOTICES.md`.
