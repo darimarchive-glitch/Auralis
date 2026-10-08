@@ -147,7 +147,8 @@ class LibraryStore:
             return
         fields = ",".join(f"{key}=?" for key in values)
         with self._connect() as db:
-            db.execute(f"UPDATE books SET {fields} WHERE id=?", (*values.values(), book_id))
+            params = (*values.values(), book_id)
+            db.execute(f"UPDATE books SET {fields} WHERE id=?", params)
 
     def update_progress(self, book_id: str, chapter: int, segment: int, progress: float) -> None:
         now = int(time.time())

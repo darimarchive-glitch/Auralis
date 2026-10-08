@@ -78,8 +78,11 @@ class SupertonicModelManager:
             return False
         if not asset.sha256:
             return True
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        return digest == asset.sha256
+        digest = hashlib.sha256()
+        with path.open("rb") as handle:
+            while block := handle.read(1024 * 1024):
+                digest.update(block)
+        return digest.hexdigest() == asset.sha256
 
     def config(self) -> dict[str, str]:
         return {asset.name: str(self.directory / asset.name) for asset in ASSETS}
