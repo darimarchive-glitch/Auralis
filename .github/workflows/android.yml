@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,18 +27,14 @@ jobs:
       - name: Download Qt for Python Android wheels
         run: |
           mkdir -p wheels
-          curl -fL -o wheels/PySide6-android.whl https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.12.0-6.12.0-cp310-abi3-android_aarch64.whl
-          curl -fL -o wheels/shiboken6-android.whl https://download.qt.io/official_releases/QtForPython/shiboken6/shiboken6-6.12.0-6.12.0-cp310-abi3-android_aarch64.whl
+          curl --retry 3 -fL -o wheels/PySide6-android.whl https://download.qt.io/official_releases/QtForPython/pyside6/pyside6-6.12.0-6.12.0-cp310-abi3-android_aarch64.whl
+          curl --retry 3 -fL -o wheels/shiboken6-android.whl https://download.qt.io/official_releases/QtForPython/shiboken6/shiboken6-6.12.0-6.12.0-cp310-abi3-android_aarch64.whl
       - name: Core tests
         run: PYTHONPATH=src pytest -q
       - name: Build APK
         run: |
-          pyside6-android-deploy main.py --name Auralis \
-            --wheel-pyside="$PWD/wheels/PySide6-android.whl" \
-            --wheel-shiboken="$PWD/wheels/shiboken6-android.whl" \
-            --ndk-path="$ANDROID_HOME/ndk/27.2.12479018" --sdk-path="$ANDROID_HOME" \
-            --extra-modules=QtPdf,QtTextToSpeech,QtMultimedia,QtNetwork --force --keep-deployment-files
-      - name: Collect
+          pyside6-android-deploy main.py --name Auralis             --wheel-pyside="$PWD/wheels/PySide6-android.whl"             --wheel-shiboken="$PWD/wheels/shiboken6-android.whl"             --ndk-path="$ANDROID_HOME/ndk/27.2.12479018" --sdk-path="$ANDROID_HOME"             --extra-modules=QtPdf,QtTextToSpeech,QtMultimedia,QtNetwork --force --keep-deployment-files
+      - name: Collect and validate
         run: |
           mkdir -p artifact
           APK=$(find . -type f -name '*.apk' | head -n1)

@@ -1,4 +1,4 @@
-name: Windows EXE
+name: Windows bundle
 
 on:
   workflow_dispatch:
@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: windows-2025
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -22,11 +23,13 @@ jobs:
           pytest -q
       - name: Deploy
         run: pyside6-deploy main.py --name Auralis --force
-      - name: Collect
+      - name: Collect portable app
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force artifact | Out-Null
-          Get-ChildItem -Recurse -File | Where-Object { $_.Name -match '^Auralis.*\.exe$' } | ForEach-Object { Copy-Item $_.FullName artifact\Auralis.exe }
-          if (-not (Test-Path artifact\Auralis.exe)) { throw 'Auralis.exe was not produced' }
+          $dist = Get-ChildItem -Recurse -Directory | Where-Object { $_.Name -eq 'Auralis.dist' } | Select-Object -First 1
+          if (-not $dist) { throw 'Auralis.dist was not produced' }
+          if (-not (Test-Path (Join-Path $dist.FullName 'Auralis.exe'))) { throw 'Auralis.exe is missing from standalone bundle' }
+          Compress-Archive -Path (Join-Path $dist.FullName '*') -DestinationPath artifact\Auralis-Windows-x64.zip -CompressionLevel Optimal
       - uses: actions/upload-artifact@v4
-        with: { name: Auralis-Windows, path: artifact/Auralis.exe }
+        with: { name: Auralis-Windows-x64, path: artifact/Auralis-Windows-x64.zip }

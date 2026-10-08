@@ -121,8 +121,11 @@ class Backend(QObject):
         def work() -> None:
             try:
                 book = self.store.import_book(path)
-                if self.automaticCovers and not book.cover_path:
-                    self._resolve_metadata_sync(book.id)
+                if self.automaticCovers:
+                    # EPUB/FB2 embedded covers are kept by default. A PDF's
+                    # rendered first page is only a provisional cover, so a
+                    # high-confidence catalogue match may replace it.
+                    self._resolve_metadata_sync(book.id, force_cover=(book.format == "pdf"))
                 self.booksChanged.emit()
                 self.toast.emit(f"{book.title} adicionado à biblioteca.")
             except Exception as exc:

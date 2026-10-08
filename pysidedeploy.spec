@@ -24,7 +24,7 @@ plugins = platforms_qtforandroid
 
 [nuitka]
 mode = standalone
-extra_args = --quiet --noinclude-qt-translations --include-data-dir=src/auralis/qml=auralis/qml
+extra_args = --quiet --assume-yes-for-downloads --noinclude-qt-translations --include-data-dir=src/auralis/qml=auralis/qml
 
 [buildozer]
 mode = debug

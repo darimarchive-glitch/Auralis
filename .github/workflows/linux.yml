@@ -1,4 +1,4 @@
-name: Linux binary
+name: Linux bundle
 
 on:
   workflow_dispatch:
@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -21,12 +22,12 @@ jobs:
         run: PYTHONPATH=src pytest -q
       - name: Deploy
         run: pyside6-deploy main.py --name Auralis --force
-      - name: Collect
+      - name: Collect standalone bundle
         run: |
           mkdir -p artifact
-          BIN=$(find . -type f \( -name 'Auralis.bin' -o -name 'Auralis' \) | head -n1)
-          test -n "$BIN"
-          cp "$BIN" artifact/Auralis
-          chmod +x artifact/Auralis
+          DIST=$(find . -type d -name 'Auralis.dist' | head -n1)
+          test -n "$DIST"
+          test -x "$DIST/Auralis.bin" || test -x "$DIST/Auralis"
+          tar -C "$DIST" -czf artifact/Auralis-Linux-x64.tar.gz .
       - uses: actions/upload-artifact@v4
-        with: { name: Auralis-Linux, path: artifact/Auralis }
+        with: { name: Auralis-Linux-x64, path: artifact/Auralis-Linux-x64.tar.gz }
