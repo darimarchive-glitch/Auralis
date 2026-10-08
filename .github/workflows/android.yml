@@ -35,7 +35,7 @@ jobs:
         run: PYTHONPATH=src pytest -q
       - name: Build APK
         run: |
-          pyside6-android-deploy main.py --name Auralis             --wheel-pyside="$PWD/wheels/PySide6-android.whl"             --wheel-shiboken="$PWD/wheels/shiboken6-android.whl"             --ndk-path="$ANDROID_HOME/ndk/27.2.12479018" --sdk-path="$ANDROID_HOME"             --extra-modules=QtPdf,QtTextToSpeech,QtMultimedia,QtNetwork --force --keep-deployment-files
+          pyside6-android-deploy --name Auralis             --wheel-pyside="$PWD/wheels/PySide6-android.whl"             --wheel-shiboken="$PWD/wheels/shiboken6-android.whl"             --ndk-path="$ANDROID_HOME/ndk/27.2.12479018" --sdk-path="$ANDROID_HOME"             --extra-modules=QtPdf,QtTextToSpeech,QtMultimedia,QtNetwork --force --keep-deployment-files
       - name: Collect and validate
         run: |
           mkdir -p artifact
