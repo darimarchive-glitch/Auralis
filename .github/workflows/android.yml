@@ -1,33 +1,52 @@
 name: Android APK
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
-  workflow_dispatch:
+    paths: ['src/**','main.py','pyproject.toml','pysidedeploy.spec','.github/workflows/android.yml']
 
 jobs:
-  apk:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-      - name: Generate native runners
-        run: python tool/bootstrap.py
-      - name: Test
-        run: flutter test
-      - name: Analyze
-        run: flutter analyze --no-fatal-infos
-      - name: Build APK
-        run: flutter build apk --release
-      - name: Rename APK
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.14' }
+      - uses: actions/setup-java@v5
+        with: { distribution: temurin, java-version: '21' }
+      - name: Install Android SDK/NDK
         run: |
-          mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-release.apk dist/Auralis-Reader-2.1.0.apk
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platform-tools' 'platforms;android-36' 'build-tools;36.0.0' 'ndk;27.2.12479018'
+      - name: Install deploy tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install PySide6==6.12.0 buildozer cython setuptools pytest
+      - name: Download Qt for Python Android wheels
+        run: |
+          mkdir -p wheels
+          curl -fL -o wheels/PySide6-android.whl https://download.qt.io/official_releases/QtForPython/pyside6/PySide6-6.12.0-6.12.0-cp310-abi3-android_aarch64.whl
+          curl -fL -o wheels/shiboken6-android.whl https://download.qt.io/official_releases/QtForPython/shiboken6/shiboken6-6.12.0-6.12.0-cp310-abi3-android_aarch64.whl
+      - name: Core tests
+        run: PYTHONPATH=src pytest -q
+      - name: Build APK
+        run: |
+          pyside6-android-deploy main.py --name Auralis \
+            --wheel-pyside="$PWD/wheels/PySide6-android.whl" \
+            --wheel-shiboken="$PWD/wheels/shiboken6-android.whl" \
+            --ndk-path="$ANDROID_HOME/ndk/27.2.12479018" --sdk-path="$ANDROID_HOME" \
+            --extra-modules=QtPdf,QtTextToSpeech,QtMultimedia,QtNetwork --force --keep-deployment-files
+      - name: Collect
+        run: |
+          mkdir -p artifact
+          APK=$(find . -type f -name '*.apk' | head -n1)
+          test -n "$APK"
+          cp "$APK" artifact/Auralis-3.0.0-alpha1.apk
+          unzip -t artifact/Auralis-3.0.0-alpha1.apk >/dev/null
+          sha256sum artifact/Auralis-3.0.0-alpha1.apk
       - uses: actions/upload-artifact@v4
         with:
-          name: Auralis-Reader-2.1.0-Android
-          path: dist/Auralis-Reader-2.1.0.apk
-          if-no-files-found: error
+          name: Auralis-Android-APK
+          path: artifact/Auralis-3.0.0-alpha1.apk

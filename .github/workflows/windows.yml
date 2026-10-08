@@ -1,37 +1,32 @@
 name: Windows EXE
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
-  workflow_dispatch:
+    paths: ['src/**','main.py','pyproject.toml','pysidedeploy.spec','.github/workflows/windows.yml']
 
 jobs:
-  windows:
-    runs-on: windows-latest
+  build:
+    runs-on: windows-2025
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-      - name: Generate native runners
-        run: python tool/bootstrap.py
-      - name: Test
-        run: flutter test
-      - name: Analyze
-        run: flutter analyze --no-fatal-infos
-      - name: Build Windows
-        run: flutter build windows --release
-      - name: Install Inno Setup
-        shell: powershell
-        run: choco install innosetup -y --no-progress
-      - name: Build installer
-        shell: powershell
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.14' }
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip PySide6==6.12.0 sherpa-onnx==1.13.8 nuitka ordered-set zstandard pytest
+      - name: Tests
+        shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" packaging\windows\Auralis.iss
+          $env:PYTHONPATH='src'
+          pytest -q
+      - name: Deploy
+        run: pyside6-deploy main.py --name Auralis --force
+      - name: Collect
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifact | Out-Null
+          Get-ChildItem -Recurse -File | Where-Object { $_.Name -match '^Auralis.*\.exe$' } | ForEach-Object { Copy-Item $_.FullName artifact\Auralis.exe }
+          if (-not (Test-Path artifact\Auralis.exe)) { throw 'Auralis.exe was not produced' }
       - uses: actions/upload-artifact@v4
-        with:
-          name: Auralis-Reader-2.1.0-Windows
-          path: dist/Auralis-Reader-2.1.0-Setup.exe
-          if-no-files-found: error
+        with: { name: Auralis-Windows, path: artifact/Auralis.exe }

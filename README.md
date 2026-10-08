@@ -1,106 +1,48 @@
-# Auralis Reader 2.1
+# Auralis 3
 
-Auralis é um leitor universal multiplataforma para **Android, Windows e Linux**, com foco em leitura confortável e narração por voz neural local.
+Auralis 3 is a full rewrite of the reader around a Python core and Qt/QML interface.
+The same application code targets Linux, Windows and Android.
 
-A versão 2.0 foi reorganizada como um projeto limpo e mantém a versão anterior preservada na branch `legacy-1.2`.
+## Goals
 
-## Vozes realistas e locais
+- one codebase for library, parsing, metadata, covers, progress and narration logic;
+- no account, no API token and no mandatory cloud service;
+- local-first storage with SQLite;
+- PDF via Qt PDF/PDFium instead of a platform-specific parser;
+- EPUB, TXT, HTML, Markdown, DOCX, FB2 and RTF via Python standard library;
+- automatic embedded-cover extraction first, then Open Library and Google Books fallback;
+- confidence scoring to avoid attaching a clearly wrong cover;
+- sentence-aware narration pipeline with abbreviations, dialogue and punctuation handling;
+- neural Supertonic 3 backend where sherpa-onnx is available, with system TTS fallback;
+- QML interface designed for touch and desktop instead of a stretched mobile layout.
 
-Há dois modos de narração. No **Android**, o modo **Natural** é recomendado: ele escolhe as melhores vozes do mecanismo TTS instalado (priorizando Google/vozes de alta qualidade) e habilita acompanhamento palavra a palavra. O modo **Offline** usa **Supertonic 3** via `sherpa_onnx` 1.13.8, sem tokens e sem API paga. O modelo offline é baixado arquivo a arquivo, com SHA-256 calculado durante o download, evitando a antiga descompactação pesada.
+The previous Flutter generation is preserved in `legacy-flutter-2.1`.
 
-O modelo oferece **10 vozes (F1–F5 e M1–M5)** e 31 idiomas, incluindo português, inglês, espanhol, francês, alemão, italiano, japonês e coreano. O Auralis também mantém o TTS do sistema como fallback.
-
-### Modelo usado
-
-- pacote: `sherpa-onnx-supertonic-3-tts-int8-2026-05-11.tar.bz2`
-- tamanho do download: 128.774.318 bytes (~123 MiB)
-- SHA-256: `82fa96f91c4ef8abaae3a14a3f4153facf88bed821d1f7331cec2700f432c427`
-- modelo: OpenRAIL-M
-- runtime: `sherpa_onnx` / Apache-2.0
-
-## Formatos
-
-A biblioteca importa PDF com camada de texto, EPUB, TXT, HTML, Markdown, DOCX, FB2 e RTF. Os livros importados são copiados para o armazenamento privado do Auralis e o progresso é salvo localmente.
-
-## Plataformas
-
-### Android
-
-O workflow `Android APK` gera:
-
-```text
-Auralis-Reader-2.0.0.apk
-```
-
-### Windows
-
-O workflow `Windows EXE` compila o runner nativo e cria um instalador com Inno Setup:
-
-```text
-Auralis-Reader-2.0.0-Setup.exe
-```
-
-### Linux
-
-O workflow `Linux Flatpak` compila o bundle Flutter Linux e empacota:
-
-```text
-Auralis-Reader-2.0.0.flatpak
-```
-
-O Flatpak usa `org.gnome.Platform//50`, atualmente suportado pelo Flathub, e tem acesso à rede somente porque o usuário pode optar por baixar o modelo neural.
-
-## Desenvolvimento
-
-Requisitos principais:
-
-- Flutter stable 3.47+ / Dart 3.13+
-- Android SDK para APK
-- Visual Studio Desktop C++ para Windows
-- GTK3, CMake, Ninja e toolchain Linux para Linux
-
-O repositório não precisa guardar runners gerados pelo Flutter. Rode:
+## Development
 
 ```bash
-python tool/bootstrap.py
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[dev,neural]'
+pytest
+python -m auralis.main
 ```
 
-Depois:
+Without the optional neural dependency, Auralis still works with Qt TextToSpeech.
 
-```bash
-flutter test
-flutter analyze --no-fatal-infos
-flutter run
-```
+## Storage
 
-## Build local
+Auralis keeps its database, imported originals, covers, models and narration cache inside the
+platform application-data directory. Imported files are copied into the application library so
+removing or moving the original does not break the book.
 
-Android:
+## Online behavior
 
-```bash
-flutter build apk --release
-```
+Book reading and local narration do not require a server. Network access is optional and is used
+for two user-visible tasks: downloading a neural voice model and resolving book metadata/covers.
+Automatic cover lookup can be disabled.
 
-Windows:
+## License
 
-```powershell
-flutter build windows --release
-```
-
-Linux:
-
-```bash
-flutter build linux --release
-```
-
-Para builds reproduzíveis de distribuição, use os workflows em `.github/workflows/`.
-
-## Privacidade
-
-No modo neural, o texto do livro é processado localmente. A conexão de internet é usada para baixar o modelo; depois da instalação, a síntese não precisa de serviço de nuvem. No modo TTS do sistema, o comportamento de rede depende do mecanismo de voz instalado no sistema operacional.
-
-## Licença
-
-O código e os materiais próprios do Auralis são **proprietários** e estão sob **Todos os Direitos Reservados**. Não é permitida cópia, modificação, redistribuição, sublicenciamento ou uso comercial sem autorização prévia por escrito.
-
-Componentes de terceiros e modelos mantêm suas próprias licenças; veja `THIRD_PARTY_NOTICES.md`.
+Auralis-owned code and assets are proprietary. **All Rights Reserved.** Third-party runtimes and
+models retain their own licenses; see `THIRD_PARTY_NOTICES.md`.

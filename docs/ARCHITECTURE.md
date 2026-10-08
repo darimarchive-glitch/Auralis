@@ -1,22 +1,22 @@
-# Auralis 2.0 architecture
+# Auralis 3 architecture
 
-## Core flow
+Auralis 3 intentionally separates four layers.
 
-1. `AppController` owns library/settings state.
-2. `BookRepository` stores imported copies, extracted content and progress.
-3. `BookImporter` parses supported formats into chapters.
-4. `ReaderController` turns chapters into speech chunks and advances only after each utterance finishes.
-5. `LocalTtsService` routes speech to neural TTS or the operating system.
-6. `NeuralTtsService` downloads and verifies the model, keeps the ONNX TTS instance in a background isolate, writes a temporary WAV, plays it locally and removes it.
+1. **Core** — Python models, text normalization, document import, metadata, SQLite and settings.
+2. **Narration** — a backend interface with Supertonic/sherpa-onnx and Qt system TTS implementations.
+3. **UI** — Qt Quick/QML only; it does not parse books or know network APIs.
+4. **Packaging** — PySide deployment for desktop and Android.
 
-## Why Supertonic 3
+The app never relies on a remote Auralis backend. Cover providers are replaceable and optional.
+A failure in Open Library, Google Books or model download does not make the library unreadable.
 
-The project needs voices that are materially more natural than classic Android/Linux TTS while remaining free of per-request tokens. Supertonic 3 is a compact multilingual ONNX model designed for on-device inference. The app uses the official sherpa-onnx compatible INT8 model package.
+## Import flow
 
-## Packaging
+`file -> format parser -> normalized chapters -> SQLite -> embedded cover -> online metadata fallback`
 
-- Android: Flutter release APK.
-- Windows: Flutter native bundle wrapped by Inno Setup.
-- Linux: Flutter native bundle copied into a GNOME 50 Flatpak runtime.
+## Narration flow
 
-All three are built independently in GitHub Actions so a platform-specific failure does not hide the status of the other platforms.
+`paragraph -> semantic segmentation -> queue -> cache lookup -> neural render/system TTS -> playback`
+
+The queue prefetches upcoming neural segments to remove gaps between sentences and stores generated
+WAV files by content hash, voice, language and speed.

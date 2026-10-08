@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auralis-reader"
+version = "3.0.0a1"
+description = "Auralis universal offline book reader with local narration"
+readme = "README.md"
+requires-python = ">=3.11,<3.15"
+authors = [{ name = "Auralis" }]
+license = { text = "Proprietary - All Rights Reserved" }
+dependencies = ["PySide6==6.12.0"]
+
+[project.optional-dependencies]
+neural = ["sherpa-onnx==1.13.8"]
+dev = ["pytest>=8.4", "ruff>=0.13"]
+
+[project.scripts]
+auralis = "auralis.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+auralis = ["qml/*.qml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
