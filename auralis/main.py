@@ -25,6 +25,9 @@ def main() -> int:
     engine.load(QUrl.fromLocalFile(str(qml)))
     if not engine.rootObjects():
         return 1
+    if os.environ.get("AURALIS_SMOKE_TEST") == "1":
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(1200, app.quit)
     return app.exec()
 
 
