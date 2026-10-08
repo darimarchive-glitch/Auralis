@@ -27,7 +27,10 @@ jobs:
           mkdir -p artifact
           DIST=$(find . -type d -name 'Auralis.dist' | head -n1)
           test -n "$DIST"
-          test -x "$DIST/Auralis.bin" || test -x "$DIST/Auralis"
+          LAUNCHER=$(find "$DIST" -maxdepth 1 -type f \( -name '*.bin' -o -name 'main' -o -name 'Auralis' \) | head -n1)
+          test -n "$LAUNCHER"
+          if [ "$(basename "$LAUNCHER")" != "Auralis" ]; then mv "$LAUNCHER" "$DIST/Auralis"; fi
+          chmod +x "$DIST/Auralis"
           tar -C "$DIST" -czf artifact/Auralis-Linux-x64.tar.gz .
       - uses: actions/upload-artifact@v4
         with: { name: Auralis-Linux-x64, path: artifact/Auralis-Linux-x64.tar.gz }

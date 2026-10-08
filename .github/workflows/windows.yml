@@ -29,7 +29,11 @@ jobs:
           New-Item -ItemType Directory -Force artifact | Out-Null
           $dist = Get-ChildItem -Recurse -Directory | Where-Object { $_.Name -eq 'Auralis.dist' } | Select-Object -First 1
           if (-not $dist) { throw 'Auralis.dist was not produced' }
-          if (-not (Test-Path (Join-Path $dist.FullName 'Auralis.exe'))) { throw 'Auralis.exe is missing from standalone bundle' }
+          $launcher = Get-ChildItem -Path $dist.FullName -File -Filter '*.exe' | Select-Object -First 1
+          if (-not $launcher) { throw 'No Windows launcher was produced' }
+          if ($launcher.Name -ne 'Auralis.exe') {
+            Rename-Item -Path $launcher.FullName -NewName 'Auralis.exe'
+          }
           Compress-Archive -Path (Join-Path $dist.FullName '*') -DestinationPath artifact\Auralis-Windows-x64.zip -CompressionLevel Optimal
       - uses: actions/upload-artifact@v4
         with: { name: Auralis-Windows-x64, path: artifact/Auralis-Windows-x64.zip }
