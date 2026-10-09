@@ -23,11 +23,11 @@ jobs:
         run: |
           pyside6-deploy -c pysidedeploy.spec --name Auralis -f
           New-Item -ItemType Directory -Force artifacts | Out-Null
-          $exe = Get-ChildItem -Recurse -Filter "Auralis.exe" | Select-Object -First 1
-          if (-not $exe) { throw "Auralis.exe was not produced" }
-          Copy-Item $exe.FullName artifacts/Auralis-Windows.exe
+          $dist = Get-ChildItem deployment -Recurse -Directory -Filter "*.dist" | Select-Object -First 1
+          if (-not $dist) { throw "Nuitka standalone directory was not produced" }
+          Compress-Archive -Path "$($dist.FullName)\*" -DestinationPath artifacts/Auralis-Windows-x64.zip -Force
       - uses: actions/upload-artifact@v4
         with:
           name: Auralis-Windows
-          path: artifacts/Auralis-Windows.exe
+          path: artifacts/Auralis-Windows-x64.zip
           if-no-files-found: error
