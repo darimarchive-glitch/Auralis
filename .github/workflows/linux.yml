@@ -18,7 +18,7 @@ jobs:
           python-version: '3.12'
       - run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libspeechd2
       - run: python -m pip install --upgrade pip
-      - run: python -m pip install .
+      - run: python -m pip install . nuitka
       - name: Build standalone binary
         run: |
           pyside6-deploy -c pysidedeploy.spec --name Auralis -f
