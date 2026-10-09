@@ -3,14 +3,15 @@ runtime: org.freedesktop.Platform
 runtime-version: '25.08'
 sdk: org.freedesktop.Sdk
 command: Auralis
+
 finish-args:
   - --share=network
   - --socket=wayland
   - --socket=fallback-x11
   - --socket=pulseaudio
   - --device=dri
-  - --filesystem=home:ro
   - --filesystem=xdg-documents:rw
+
 modules:
   - name: auralis
     buildsystem: simple
@@ -24,3 +25,9 @@ modules:
     sources:
       - type: dir
         path: app
+      - type: file
+        path: io.github.darimarchive_glitch.Auralis.desktop
+      - type: file
+        path: io.github.darimarchive_glitch.Auralis.svg
+      - type: file
+        path: io.github.darimarchive_glitch.Auralis.metainfo.xml
