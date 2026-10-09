@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Auralis
+Comment=Leitor universal, audiobook e tradutor literário
+Exec=Auralis
+Icon=io.github.darimarchive_glitch.Auralis
+Terminal=false
+Categories=Office;Education;
+StartupNotify=true
