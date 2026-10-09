@@ -13,10 +13,7 @@ modules = Core,Gui,Qml,Quick,QuickControls2,Network,Pdf,TextToSpeech
 
 [buildozer]
 mode = debug
-
-[android]
 arch = aarch64
-plugins = texttospeech,platforms,imageformats,tls
 
 [nuitka]
 mode = standalone
