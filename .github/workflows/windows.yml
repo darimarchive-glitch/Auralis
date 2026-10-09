@@ -1,6 +1,8 @@
-name: Windows desktop
+name: Windows build
 on:
   workflow_dispatch:
+  push:
+    tags: ['v*']
 permissions:
   contents: read
 jobs:
@@ -11,9 +13,18 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install -e .
-      - run: pyside6-deploy main.py --name Auralis
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install .
+      - name: Build standalone executable
+        shell: pwsh
+        run: |
+          pyside6-deploy -c pysidedeploy.spec --name Auralis -f
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          $exe = Get-ChildItem -Recurse -Filter "Auralis.exe" | Select-Object -First 1
+          if (-not $exe) { throw "Auralis.exe was not produced" }
+          Copy-Item $exe.FullName artifacts/Auralis-Windows.exe
       - uses: actions/upload-artifact@v4
         with:
           name: Auralis-Windows
-          path: deployment/**
+          path: artifacts/Auralis-Windows.exe
+          if-no-files-found: error
