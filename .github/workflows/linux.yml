@@ -1,0 +1,31 @@
+name: Linux build
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libspeechd2
+      - run: python -m pip install --upgrade pip
+      - run: python -m pip install .
+      - name: Build standalone binary
+        run: |
+          pyside6-deploy -c pysidedeploy.spec --name Auralis -f
+          mkdir -p artifacts
+          BIN="$(find . -type f \( -name 'Auralis.bin' -o -name 'Auralis' \) -perm -111 | head -n 1)"
+          test -n "$BIN"
+          cp "$BIN" artifacts/Auralis-Linux.bin
+          chmod +x artifacts/Auralis-Linux.bin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Auralis-Linux
+          path: artifacts/Auralis-Linux.bin
+          if-no-files-found: error
