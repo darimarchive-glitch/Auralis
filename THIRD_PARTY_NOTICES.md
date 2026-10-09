@@ -1,32 +1,35 @@
 # Third-party notices
 
-Auralis Reader itself is proprietary software distributed under the Auralis
-Proprietary License. All rights in Auralis-owned source code, binaries,
-documentation, branding, and assets are reserved.
+Auralis itself is proprietary software. Third-party components keep their own licenses.
 
-Third-party software and downloaded models remain under their respective
-licenses. The proprietary Auralis license does not replace, narrow, or expand
-rights granted by those third-party licensors.
+## Qt / PySide6
+PySide6 and Qt are distributed under the applicable Qt licensing terms.
+
+## MADLAD-400
+The optional high-quality translation engine can use `google/madlad400-3b-mt`.
+- Model family: MADLAD-400
+- License: Apache-2.0
+- The model is downloaded by the user and is not committed to this repository.
+
+## Qwen3
+The optional Studio literary post-editor can use `Qwen/Qwen3-4B-Instruct-2507`.
+- License: Apache-2.0
+- The model is downloaded by the user and is not committed to this repository.
+
+## Argos Translate
+Optional lightweight/offline translation backend.
+- Project: https://github.com/argosopentech/argos-translate
+- License: MIT
+- Translation packages keep their own accompanying notices.
 
 ## sherpa-onnx
-
-Auralis uses `sherpa_onnx` 1.13.8 for local ONNX text-to-speech inference.
-
+Optional local neural TTS runtime.
 - Project: https://github.com/k2-fsa/sherpa-onnx
 - License: Apache-2.0
 
 ## Supertonic 3
-
-The optional local neural voice uses Supertonic 3 compatible assets distributed through the sherpa-onnx TTS model release.
-
+Optional local neural voice model.
 - Model card: https://huggingface.co/Supertone/supertonic-3
 - Model license: OpenRAIL-M
-- Compatible package: https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models
 
-The model is not committed to this repository or bundled in the base application package. It is downloaded only when the user requests neural voices.
-
-## Other Flutter packages
-
-The project uses packages including `audioplayers`, `file_picker`, `pdfrx`,
-`archive`, `xml`, `html`, `path_provider` and `flutter_tts`. Refer to
-each package's repository/package page for its license and notices.
+No third-party model is committed to the Auralis repository or silently bundled into the base app.

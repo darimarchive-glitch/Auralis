@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=78", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auralis-reader"
+version = "3.0.0"
+description = "Local-first universal book reader, narrator and literary translator"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Proprietary - All Rights Reserved"}
+dependencies = [
+  "PySide6>=6.9,<7",
+]
+
+[project.optional-dependencies]
+translation-lite = ["argostranslate>=1.11"]
+translation-ai = ["transformers>=4.57", "torch>=2.8", "sentencepiece>=0.2", "accelerate>=1.10"]
+neural = ["sherpa-onnx>=1.12", "soundfile>=0.13"]
+dev = ["pytest>=8.4", "ruff>=0.13"]
+
+[project.scripts]
+auralis = "auralis.main:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+auralis = ["qml/**/*.qml"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

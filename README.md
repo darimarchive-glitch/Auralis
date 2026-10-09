@@ -1,106 +1,104 @@
-# Auralis Reader 2.1
+# Auralis 3.0
 
-Auralis é um leitor universal multiplataforma para **Android, Windows e Linux**, com foco em leitura confortável e narração por voz neural local.
+Auralis 3 é uma reescrita do leitor em **Python + Qt/QML**, com o mesmo núcleo para Linux,
+Windows e Android. A geração Flutter anterior foi preservada na branch `legacy-flutter-2.1`.
 
-A versão 2.0 foi reorganizada como um projeto limpo e mantém a versão anterior preservada na branch `legacy-1.2`.
+O objetivo agora é ser três produtos em um só: **biblioteca**, **audiobook local** e **tradutor
+literário de livros inteiros**.
 
-## Vozes realistas e locais
+## O que já está na nova arquitetura
 
-Há dois modos de narração. No **Android**, o modo **Natural** é recomendado: ele escolhe as melhores vozes do mecanismo TTS instalado (priorizando Google/vozes de alta qualidade) e habilita acompanhamento palavra a palavra. O modo **Offline** usa **Supertonic 3** via `sherpa_onnx` 1.13.8, sem tokens e sem API paga. O modelo offline é baixado arquivo a arquivo, com SHA-256 calculado durante o download, evitando a antiga descompactação pesada.
+- biblioteca local com SQLite e progresso persistente;
+- importação de EPUB, PDF com camada de texto, TXT, Markdown, HTML, DOCX, FB2 e RTF;
+- extração de capa do EPUB;
+- busca automática de capa por título/autor: Open Library primeiro, Google Books como fallback;
+- pontuação de confiança para evitar associar capas claramente erradas;
+- normalização de hifenização, parágrafos, diálogos, abreviações e pontuação;
+- pipeline TTS separado do parser, preparado para prefetch/cache e voz neural;
+- tradutor de texto e de **livro completo**, com cache por capítulo;
+- quatro modos de tradução: `faithful`, `modern`, `literal`, `study`;
+- modo `smart`: prioriza o modelo local MADLAD-400 quando instalado;
+- modo leve: Argos Translate, com pacotes de idioma baixados sob demanda;
+- modo `studio`: MADLAD-400 + uma segunda revisão literária local por Qwen3;
+- nenhum token, conta ou API paga é necessário para a tradução local;
+- interface QML responsiva com Biblioteca e Tradutor no mesmo aplicativo.
 
-O modelo oferece **10 vozes (F1–F5 e M1–M5)** e 31 idiomas, incluindo português, inglês, espanhol, francês, alemão, italiano, japonês e coreano. O Auralis também mantém o TTS do sistema como fallback.
+## Tradução por IA
 
-### Modelo usado
+### Smart — MADLAD-400 3B
 
-- pacote: `sherpa-onnx-supertonic-3-tts-int8-2026-05-11.tar.bz2`
-- tamanho do download: 128.774.318 bytes (~123 MiB)
-- SHA-256: `82fa96f91c4ef8abaae3a14a3f4153facf88bed821d1f7331cec2700f432c427`
-- modelo: OpenRAIL-M
-- runtime: `sherpa_onnx` / Apache-2.0
+O backend de maior qualidade usa `google/madlad400-3b-mt`, um modelo especializado em tradução,
+com suporte a centenas de idiomas. O modelo não é empacotado no APK/instalador: ele é baixado pelo
+runtime local na primeira utilização e fica no cache do usuário.
 
-## Formatos
+Instalação de desenvolvimento:
 
-A biblioteca importa PDF com camada de texto, EPUB, TXT, HTML, Markdown, DOCX, FB2 e RTF. Os livros importados são copiados para o armazenamento privado do Auralis e o progresso é salvo localmente.
-
-## Plataformas
-
-### Android
-
-O workflow `Android APK` gera:
-
-```text
-Auralis-Reader-2.0.0.apk
+```bash
+python -m pip install -e '.[translation-ai]'
 ```
 
-### Windows
+### Lite — Argos Translate
 
-O workflow `Windows EXE` compila o runner nativo e cria um instalador com Inno Setup:
+Para hardware mais fraco, o Auralis pode usar Argos Translate e baixar apenas os pares de idiomas
+necessários:
 
-```text
-Auralis-Reader-2.0.0-Setup.exe
+```bash
+python -m pip install -e '.[translation-lite]'
 ```
 
-### Linux
+### Studio — tradução + revisão literária
 
-O workflow `Linux Flatpak` compila o bundle Flutter Linux e empacota:
+O modo Studio adiciona um segundo passe com `Qwen/Qwen3-4B-Instruct-2507`, sempre local. O revisor
+recebe o original e a tradução base e é instruído a não inventar, resumir ou omitir conteúdo. Esse
+modo é especialmente útil para prosa antiga, diálogos, construções arcaicas e traduções em que se
+quer escolher entre preservar a época ou usar linguagem contemporânea.
 
-```text
-Auralis-Reader-2.0.0.flatpak
-```
+## Perfis literários
 
-O Flatpak usa `org.gnome.Platform//50`, atualmente suportado pelo Flathub, e tem acesso à rede somente porque o usuário pode optar por baixar o modelo neural.
+- **faithful**: conserva época, registro, ritmo e ambiguidades;
+- **modern**: moderniza a linguagem sem resumir nem mudar fatos;
+- **literal**: interfere o mínimo possível;
+- **study**: prioriza clareza sem acrescentar notas ou conteúdo inexistente.
+
+A estrutura do livro é mantida por capítulo e por parágrafo. A tradução é cacheada com hash do texto
+original; se o capítulo não mudou, ele não é traduzido de novo.
+
+## Voz e narração
+
+Auralis mantém `QTextToSpeech` como fallback. A camada de narração já é independente do backend e
+segmenta headings, diálogos e narração, permitindo que um backend neural gere os próximos trechos
+enquanto o atual toca. `sherpa-onnx` e Supertonic continuam previstos como backend neural opcional.
 
 ## Desenvolvimento
 
-Requisitos principais:
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[dev]'
+pytest
+python main.py
+```
 
-- Flutter stable 3.47+ / Dart 3.13+
-- Android SDK para APK
-- Visual Studio Desktop C++ para Windows
-- GTK3, CMake, Ninja e toolchain Linux para Linux
-
-O repositório não precisa guardar runners gerados pelo Flutter. Rode:
+Para tradução de alta qualidade:
 
 ```bash
-python tool/bootstrap.py
+python -m pip install -e '.[dev,translation-ai]'
 ```
 
-Depois:
+## Android
 
-```bash
-flutter test
-flutter analyze --no-fatal-infos
-flutter run
-```
-
-## Build local
-
-Android:
-
-```bash
-flutter build apk --release
-```
-
-Windows:
-
-```powershell
-flutter build windows --release
-```
-
-Linux:
-
-```bash
-flutter build linux --release
-```
-
-Para builds reproduzíveis de distribuição, use os workflows em `.github/workflows/`.
+Qt for Python fornece `pyside6-android-deploy`, que gera APK/AAB a partir da mesma aplicação QML.
+Dependências nativas opcionais (sherpa-onnx/Argos/MADLAD) precisam de builds compatíveis com Android;
+por isso o núcleo não depende delas para iniciar. O aplicativo continua funcional como leitor mesmo
+quando um pacote neural não está instalado.
 
 ## Privacidade
 
-No modo neural, o texto do livro é processado localmente. A conexão de internet é usada para baixar o modelo; depois da instalação, a síntese não precisa de serviço de nuvem. No modo TTS do sistema, o comportamento de rede depende do mecanismo de voz instalado no sistema operacional.
+Livros, progresso, traduções em cache e áudio ficam no dispositivo. A internet é usada apenas para
+funções explícitas, como baixar modelos/pacotes e procurar metadados/capas. O texto de um livro não
+precisa ser enviado a um serviço externo.
 
 ## Licença
 
-O código e os materiais próprios do Auralis são **proprietários** e estão sob **Todos os Direitos Reservados**. Não é permitida cópia, modificação, redistribuição, sublicenciamento ou uso comercial sem autorização prévia por escrito.
-
-Componentes de terceiros e modelos mantêm suas próprias licenças; veja `THIRD_PARTY_NOTICES.md`.
+Código e materiais próprios do Auralis são **proprietários — Todos os Direitos Reservados**.
+Dependências e modelos mantêm suas licenças próprias; veja `THIRD_PARTY_NOTICES.md`.
