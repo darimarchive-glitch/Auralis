@@ -2,7 +2,9 @@ name: Linux build
 on:
   workflow_dispatch:
   push:
-    tags: ['v*']
+    branches: [main]
+    paths:
+      - 'VERSION'
 permissions:
   contents: read
 jobs:
