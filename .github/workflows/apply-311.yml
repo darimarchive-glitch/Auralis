@@ -1,4 +1,5 @@
 name: Apply Auralis 3.1.1 Flutter source
+# Re-run after release workflow updates
 
 on:
   push:
