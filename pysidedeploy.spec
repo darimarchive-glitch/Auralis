@@ -17,3 +17,7 @@ mode = debug
 [android]
 arch = aarch64
 plugins = texttospeech,platforms,imageformats,tls
+
+[nuitka]
+mode = standalone
+extra_args =
