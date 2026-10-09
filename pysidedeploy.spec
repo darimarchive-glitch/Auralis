@@ -17,4 +17,4 @@ arch = aarch64
 
 [nuitka]
 mode = standalone
-extra_args =
+extra_args = --assume-yes-for-downloads
