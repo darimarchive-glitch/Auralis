@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "Proprietary - All Rights Reserved"}
 dependencies = [
-  "PySide6>=6.11,<6.12",
+  "PySide6==6.12.0",
 ]
 
 [project.optional-dependencies]
@@ -38,3 +38,27 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+
+[tool.pyside6-project]
+files = [
+  "main.py",
+  "src/auralis/__init__.py",
+  "src/auralis/controller.py",
+  "src/auralis/covers.py",
+  "src/auralis/db.py",
+  "src/auralis/importer.py",
+  "src/auralis/main.py",
+  "src/auralis/models.py",
+  "src/auralis/paths.py",
+  "src/auralis/text.py",
+  "src/auralis/translation.py",
+  "src/auralis/tts.py",
+  "src/auralis/qml/Main.qml",
+  "src/auralis/qml/components/NavButton.qml",
+  "src/auralis/qml/components/VoiceSheet.qml",
+  "src/auralis/qml/pages/AudiobookPage.qml",
+  "src/auralis/qml/pages/LibraryPage.qml",
+  "src/auralis/qml/pages/ReaderPage.qml",
+  "src/auralis/qml/pages/TranslatePage.qml",
+]
