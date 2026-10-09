@@ -22,7 +22,9 @@ class LibraryPage extends StatelessWidget {
   }
 
   void _open(BuildContext context, BookMetadata book) {
-    Navigator.of(context).push(MaterialPageRoute(builder: (_) => ReaderPage(app: controller, book: book)));
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => ReaderPage(app: controller, book: book)),
+    );
   }
 
   Future<void> _delete(BuildContext context, BookMetadata book) async {
@@ -30,7 +32,7 @@ class LibraryPage extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Remover livro?'),
-        content: Text('“${book.title}” e sua cópia local serão removidos.'),
+        content: Text('“${book.title}” e seus dados locais serão removidos.'),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
           FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Remover')),
@@ -40,22 +42,39 @@ class LibraryPage extends StatelessWidget {
     if (ok == true) await controller.deleteBook(book);
   }
 
+  Future<void> _refreshCover(BuildContext context, BookMetadata book) async {
+    try {
+      await controller.refreshCover(book);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: controller,
       builder: (context, _) => Scaffold(
         appBar: AppBar(
-          title: const Text('Auralis'),
+          title: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Auralis'),
+              Text('Sua biblioteca', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400)),
+            ],
+          ),
           actions: [
             IconButton(
               tooltip: 'Configurações',
-              icon: const Icon(Icons.tune),
+              icon: const Icon(Icons.tune_rounded),
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => SettingsPage(controller: controller)),
               ),
             ),
+            const SizedBox(width: 6),
           ],
         ),
         body: Stack(
@@ -69,16 +88,28 @@ class LibraryPage extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.auto_stories_outlined, size: 72),
-                        const SizedBox(height: 20),
-                        Text('Sua biblioteca está vazia', style: Theme.of(context).textTheme.headlineSmall),
-                        const SizedBox(height: 12),
+                        Container(
+                          width: 92,
+                          height: 92,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primaryContainer,
+                            borderRadius: BorderRadius.circular(28),
+                          ),
+                          child: const Icon(Icons.auto_stories_rounded, size: 48),
+                        ),
+                        const SizedBox(height: 22),
+                        Text('Comece sua biblioteca', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800)),
+                        const SizedBox(height: 10),
                         const Text(
-                          'Importe PDF, EPUB, TXT, HTML, Markdown, DOCX, FB2 ou RTF. O arquivo fica no seu dispositivo.',
+                          'Importe EPUB, PDF, DOCX, TXT, HTML, Markdown, FB2 ou RTF. Capas, progresso e traduções ficam organizados no Auralis.',
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 24),
-                        FilledButton.icon(onPressed: () => _import(context), icon: const Icon(Icons.add), label: const Text('Adicionar livro')),
+                        FilledButton.icon(
+                          onPressed: () => _import(context),
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text('Adicionar livro'),
+                        ),
                       ],
                     ),
                   ),
@@ -88,37 +119,47 @@ class LibraryPage extends StatelessWidget {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final width = constraints.maxWidth;
-                  final count = width >= 1100 ? 5 : width >= 800 ? 4 : width >= 560 ? 3 : 2;
+                  final count = width >= 1200 ? 6 : width >= 900 ? 5 : width >= 680 ? 4 : width >= 430 ? 3 : 2;
                   return GridView.builder(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 110),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: count,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: width < 560 ? .62 : .72,
+                      crossAxisSpacing: 14,
+                      mainAxisSpacing: 14,
+                      childAspectRatio: width < 560 ? .58 : .64,
                     ),
                     itemCount: controller.books.length,
                     itemBuilder: (context, index) {
                       final book = controller.books[index];
-                      return BookCard(book: book, onOpen: () => _open(context, book), onDelete: () => _delete(context, book));
+                      return BookCard(
+                        book: book,
+                        onOpen: () => _open(context, book),
+                        onDelete: () => _delete(context, book),
+                        onRefreshCover: () => _refreshCover(context, book),
+                      );
                     },
                   );
                 },
               ),
             if (controller.busy)
               ColoredBox(
-                color: Colors.black54,
+                color: Colors.black.withValues(alpha: .55),
                 child: Center(
                   child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const CircularProgressIndicator(),
-                          const SizedBox(height: 16),
-                          Text(controller.status ?? 'Processando…'),
-                        ],
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 360),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            controller.taskProgress == null
+                                ? const CircularProgressIndicator()
+                                : CircularProgressIndicator(value: controller.taskProgress),
+                            const SizedBox(height: 16),
+                            Text(controller.status ?? 'Processando…', textAlign: TextAlign.center),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -128,7 +169,11 @@ class LibraryPage extends StatelessWidget {
         ),
         floatingActionButton: controller.books.isEmpty
             ? null
-            : FloatingActionButton.extended(onPressed: () => _import(context), icon: const Icon(Icons.add), label: const Text('Adicionar')),
+            : FloatingActionButton.extended(
+                onPressed: () => _import(context),
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Adicionar'),
+              ),
       ),
     );
   }

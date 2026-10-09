@@ -1,13 +1,6 @@
-enum BookFormat {
-  pdf,
-  epub,
-  txt,
-  html,
-  markdown,
-  docx,
-  fb2,
-  rtf,
-}
+import 'dart:typed_data';
+
+enum BookFormat { pdf, epub, txt, html, markdown, docx, fb2, rtf }
 
 extension BookFormatX on BookFormat {
   String get label => switch (this) {
@@ -39,16 +32,11 @@ extension BookFormatX on BookFormat {
 
 class BookChapter {
   const BookChapter({required this.id, required this.title, required this.text});
-
   final String id;
   final String title;
   final String text;
 
-  Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'text': text,
-      };
+  Map<String, dynamic> toJson() => {'id': id, 'title': title, 'text': text};
 
   factory BookChapter.fromJson(Map<String, dynamic> json) => BookChapter(
         id: json['id'] as String,
@@ -59,7 +47,6 @@ class BookChapter {
 
 class BookContent {
   const BookContent({required this.chapters});
-
   final List<BookChapter> chapters;
 
   Map<String, dynamic> toJson() => {
@@ -79,12 +66,16 @@ class ParsedBook {
     required this.author,
     required this.language,
     required this.chapters,
+    this.coverBytes,
+    this.coverExtension,
   });
 
   final String title;
   final String? author;
   final String? language;
   final List<BookChapter> chapters;
+  final Uint8List? coverBytes;
+  final String? coverExtension;
 }
 
 class BookMetadata {
@@ -100,9 +91,12 @@ class BookMetadata {
     required this.chapterCount,
     required this.totalCharacters,
     required this.addedAt,
+    this.coverPath,
     this.lastOpenedAt,
     this.currentChapter = 0,
     this.currentChunk = 0,
+    this.activeTranslationLanguage,
+    this.translationFiles = const <String, String>{},
   });
 
   final String id;
@@ -113,25 +107,37 @@ class BookMetadata {
   final String originalFileName;
   final String storedFilePath;
   final String contentFilePath;
+  final String? coverPath;
   final int chapterCount;
   final int totalCharacters;
   final DateTime addedAt;
   final DateTime? lastOpenedAt;
   final int currentChapter;
   final int currentChunk;
+  final String? activeTranslationLanguage;
+  final Map<String, String> translationFiles;
 
   double get roughProgress {
     if (chapterCount <= 0) return 0;
-    return (currentChapter / chapterCount).clamp(0.0, 1.0).toDouble();
+    final chapterPart = currentChapter / chapterCount;
+    return chapterPart.clamp(0.0, 1.0).toDouble();
   }
+
+  bool get hasCover => coverPath != null && coverPath!.isNotEmpty;
+  bool get hasTranslation => translationFiles.isNotEmpty;
 
   BookMetadata copyWith({
     String? title,
     String? author,
     String? language,
+    String? coverPath,
+    bool clearCover = false,
     DateTime? lastOpenedAt,
     int? currentChapter,
     int? currentChunk,
+    String? activeTranslationLanguage,
+    bool clearActiveTranslation = false,
+    Map<String, String>? translationFiles,
   }) =>
       BookMetadata(
         id: id,
@@ -142,12 +148,17 @@ class BookMetadata {
         originalFileName: originalFileName,
         storedFilePath: storedFilePath,
         contentFilePath: contentFilePath,
+        coverPath: clearCover ? null : coverPath ?? this.coverPath,
         chapterCount: chapterCount,
         totalCharacters: totalCharacters,
         addedAt: addedAt,
         lastOpenedAt: lastOpenedAt ?? this.lastOpenedAt,
         currentChapter: currentChapter ?? this.currentChapter,
         currentChunk: currentChunk ?? this.currentChunk,
+        activeTranslationLanguage: clearActiveTranslation
+            ? null
+            : activeTranslationLanguage ?? this.activeTranslationLanguage,
+        translationFiles: translationFiles ?? this.translationFiles,
       );
 
   Map<String, dynamic> toJson() => {
@@ -159,12 +170,15 @@ class BookMetadata {
         'originalFileName': originalFileName,
         'storedFilePath': storedFilePath,
         'contentFilePath': contentFilePath,
+        'coverPath': coverPath,
         'chapterCount': chapterCount,
         'totalCharacters': totalCharacters,
         'addedAt': addedAt.toIso8601String(),
         'lastOpenedAt': lastOpenedAt?.toIso8601String(),
         'currentChapter': currentChapter,
         'currentChunk': currentChunk,
+        'activeTranslationLanguage': activeTranslationLanguage,
+        'translationFiles': translationFiles,
       };
 
   factory BookMetadata.fromJson(Map<String, dynamic> json) => BookMetadata(
@@ -176,6 +190,7 @@ class BookMetadata {
         originalFileName: json['originalFileName'] as String,
         storedFilePath: json['storedFilePath'] as String,
         contentFilePath: json['contentFilePath'] as String,
+        coverPath: json['coverPath'] as String?,
         chapterCount: json['chapterCount'] as int,
         totalCharacters: json['totalCharacters'] as int,
         addedAt: DateTime.parse(json['addedAt'] as String),
@@ -184,5 +199,10 @@ class BookMetadata {
             : DateTime.parse(json['lastOpenedAt'] as String),
         currentChapter: json['currentChapter'] as int? ?? 0,
         currentChunk: json['currentChunk'] as int? ?? 0,
+        activeTranslationLanguage: json['activeTranslationLanguage'] as String?,
+        translationFiles: (json['translationFiles'] as Map?)?.map(
+              (key, value) => MapEntry(key.toString(), value.toString()),
+            ) ??
+            const <String, String>{},
       );
 }

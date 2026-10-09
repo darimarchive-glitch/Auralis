@@ -1,22 +1,17 @@
-# Auralis 2.0 architecture
+# Auralis 3.1.1 architecture
 
-## Core flow
+Auralis 3.1.1 usa Flutter/Dart como camada única de UI, biblioteca e fluxo de
+leitura em Android, Windows e Linux.
 
-1. `AppController` owns library/settings state.
-2. `BookRepository` stores imported copies, extracted content and progress.
-3. `BookImporter` parses supported formats into chapters.
-4. `ReaderController` turns chapters into speech chunks and advances only after each utterance finishes.
-5. `LocalTtsService` routes speech to neural TTS or the operating system.
-6. `NeuralTtsService` downloads and verifies the model, keeps the ONNX TTS instance in a background isolate, writes a temporary WAV, plays it locally and removes it.
+- `controllers/`: estado da biblioteca e sessão de leitura.
+- `models/`: livros, capítulos e preferências persistentes.
+- `services/book_importer.dart`: extração de texto/metadados/capa.
+- `services/book_repository.dart`: armazenamento local e cache de tradução.
+- `services/cover_service.dart`: Open Library -> Google Books.
+- `services/translation_service.dart`: tradução rápida ou LLM configurável.
+- `services/tts_service.dart`: TTS do sistema e seleção de voz.
+- `services/neural_tts_service.dart`: Supertonic/sherpa-onnx local.
+- `ui/`: biblioteca, leitor, audiobook, tradução e folhas de controle.
 
-## Why Supertonic 3
-
-The project needs voices that are materially more natural than classic Android/Linux TTS while remaining free of per-request tokens. Supertonic 3 is a compact multilingual ONNX model designed for on-device inference. The app uses the official sherpa-onnx compatible INT8 model package.
-
-## Packaging
-
-- Android: Flutter release APK.
-- Windows: Flutter native bundle wrapped by Inno Setup.
-- Linux: Flutter native bundle copied into a GNOME 50 Flatpak runtime.
-
-All three are built independently in GitHub Actions so a platform-specific failure does not hide the status of the other platforms.
+O repositório não inclui segredos. Modelos neurais pesados são baixados em
+runtime ou fornecidos pelo usuário.

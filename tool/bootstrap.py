@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Gera os runners nativos usando a versão de Flutter instalada na máquina."""
+"""Generate/refresh Flutter platform runners without adding secrets."""
 from __future__ import annotations
-import os
+
 from pathlib import Path
 import shutil
 import subprocess
@@ -20,54 +20,70 @@ def patch_android() -> None:
     manifest = ROOT / 'android/app/src/main/AndroidManifest.xml'
     if not manifest.exists():
         return
-    ET.register_namespace('android', 'http://schemas.android.com/apk/res/android')
+    android_ns = 'http://schemas.android.com/apk/res/android'
+    android = '{' + android_ns + '}'
+    ET.register_namespace('android', android_ns)
     tree = ET.parse(manifest)
     root = tree.getroot()
-    android = '{http://schemas.android.com/apk/res/android}'
     app = root.find('application')
     if app is not None:
         app.set(android + 'label', 'Auralis Reader')
 
-    has_internet = any(
-        permission.get(android + 'name') == 'android.permission.INTERNET'
-        for permission in root.findall('uses-permission')
-    )
-    if not has_internet:
-        permission = ET.Element('uses-permission')
-        permission.set(android + 'name', 'android.permission.INTERNET')
-        root.insert(0, permission)
-    has_query = any(
-        intent.find('action') is not None
-        and intent.find('action').get(android + 'name') == 'android.intent.action.TTS_SERVICE'
-        for queries in root.findall('queries')
+    def permission(name: str) -> None:
+        if any(node.get(android + 'name') == name for node in root.findall('uses-permission')):
+            return
+        node = ET.Element('uses-permission')
+        node.set(android + 'name', name)
+        root.insert(0, node)
+
+    permission('android.permission.INTERNET')
+    permission('android.permission.ACCESS_NETWORK_STATE')
+
+    queries = root.find('queries')
+    if queries is None:
+        queries = ET.Element('queries')
+        root.insert(0, queries)
+    has_tts = any(
+        action.get(android + 'name') == 'android.intent.action.TTS_SERVICE'
         for intent in queries.findall('intent')
+        for action in intent.findall('action')
     )
-    if not has_query:
-        queries = root.find('queries')
-        if queries is None:
-            queries = ET.Element('queries')
-            root.insert(0, queries)
+    if not has_tts:
         intent = ET.SubElement(queries, 'intent')
         action = ET.SubElement(intent, 'action')
         action.set(android + 'name', 'android.intent.action.TTS_SERVICE')
+
     tree.write(manifest, encoding='utf-8', xml_declaration=True)
 
 
 def main() -> None:
     flutter = shutil.which('flutter')
     if not flutter:
-        raise SystemExit('Flutter não encontrado no PATH. Instale Flutter 3.47+ e execute novamente.')
+        raise SystemExit('Flutter not found in PATH.')
+
     with tempfile.TemporaryDirectory(prefix='auralis_flutter_') as td:
         target = Path(td) / 'auralis_reader'
-        run(flutter, 'create', '--platforms=android,linux,windows', '--org', 'io.auralis', '--project-name', 'auralis_reader', str(target), cwd=Path(td))
+        run(
+            flutter,
+            'create',
+            '--platforms=android,linux,windows',
+            '--org',
+            'io.auralis',
+            '--project-name',
+            'auralis_reader',
+            str(target),
+            cwd=Path(td),
+        )
         for platform in ('android', 'linux', 'windows'):
             dst = ROOT / platform
-            if dst.exists():
-                shutil.rmtree(dst)
-            shutil.copytree(target / platform, dst)
+            # Preserve checked-in runners when they exist. This makes the repo
+            # complete while still allowing a clean regeneration in CI.
+            if not dst.exists():
+                shutil.copytree(target / platform, dst)
+
     patch_android()
     run(flutter, 'pub', 'get')
-    print('\nAuralis preparado. Rode: flutter run -d <dispositivo>')
+    print('Auralis platform runners are ready.')
 
 
 if __name__ == '__main__':

@@ -10,29 +10,38 @@ class ReaderController extends ChangeNotifier {
   final AppController app;
   BookMetadata book;
 
-  BookContent? content;
+  BookContent? originalContent;
+  BookContent? translatedContent;
   List<String> chunks = [];
   int chapterIndex = 0;
   int chunkIndex = 0;
   bool playing = false;
   bool loading = true;
+  bool useTranslation = false;
   String? error;
   int spokenStart = -1;
   int spokenEnd = -1;
   String spokenWord = '';
   int _playGeneration = 0;
 
-  BookChapter? get chapter =>
-      content == null || content!.chapters.isEmpty
-          ? null
-          : content!.chapters[chapterIndex];
+  BookContent? get content => useTranslation && translatedContent != null
+      ? translatedContent
+      : originalContent;
 
-  double get chapterProgress =>
-      chunks.isEmpty
-          ? 0
-          : ((chunkIndex + 1) / chunks.length)
-              .clamp(0.0, 1.0)
-              .toDouble();
+  BookChapter? get chapter => content == null || content!.chapters.isEmpty
+      ? null
+      : content!.chapters[chapterIndex.clamp(0, content!.chapters.length - 1)];
+
+  bool get translationAvailable => translatedContent != null;
+  String? get translationLanguage => book.activeTranslationLanguage;
+
+  String get speechLanguage => useTranslation && translationLanguage != null
+      ? _localeFor(translationLanguage!)
+      : (book.language ?? app.settings.defaultLanguage);
+
+  double get chapterProgress => chunks.isEmpty
+      ? 0
+      : ((chunkIndex + 1) / chunks.length).clamp(0.0, 1.0).toDouble();
 
   bool get wordTrackingActive =>
       app.settings.ttsBackend == TtsBackend.system &&
@@ -41,14 +50,20 @@ class ReaderController extends ChangeNotifier {
       chunkIndex < chunks.length &&
       spokenEnd <= chunks[chunkIndex].length;
 
-  String get currentChunk =>
-      chunks.isEmpty ? '' : chunks[chunkIndex.clamp(0, chunks.length - 1)];
+  String get currentChunk => chunks.isEmpty ? '' : chunks[chunkIndex.clamp(0, chunks.length - 1)];
 
   Future<void> init() async {
     try {
-      content = await app.repository.loadContent(book);
-      chapterIndex =
-          book.currentChapter.clamp(0, content!.chapters.length - 1).toInt();
+      originalContent = await app.repository.loadContent(book);
+      if (book.activeTranslationLanguage != null) {
+        translatedContent = await app.repository.loadTranslation(
+          book,
+          book.activeTranslationLanguage!,
+        );
+      }
+      useTranslation = translatedContent != null;
+      final count = content?.chapters.length ?? 0;
+      chapterIndex = count == 0 ? 0 : book.currentChapter.clamp(0, count - 1).toInt();
       _loadChapterChunks(book.currentChunk);
       book = book.copyWith(lastOpenedAt: DateTime.now());
       await app.updateBook(book);
@@ -61,12 +76,15 @@ class ReaderController extends ChangeNotifier {
   }
 
   void _loadChapterChunks(int preferredChunk) {
-    chunks = TextNormalizer.speechChunks(
-      content!.chapters[chapterIndex].text,
-    );
-    chunkIndex = chunks.isEmpty
-        ? 0
-        : preferredChunk.clamp(0, chunks.length - 1).toInt();
+    final current = content;
+    if (current == null || current.chapters.isEmpty) {
+      chunks = [];
+      chunkIndex = 0;
+      return;
+    }
+    final text = current.chapters[chapterIndex].text;
+    chunks = TextNormalizer.speechChunks(text);
+    chunkIndex = chunks.isEmpty ? 0 : preferredChunk.clamp(0, chunks.length - 1).toInt();
     _resetSpokenRange();
   }
 
@@ -74,6 +92,33 @@ class ReaderController extends ChangeNotifier {
     spokenStart = -1;
     spokenEnd = -1;
     spokenWord = '';
+  }
+
+  Future<void> refreshBook(BookMetadata updated) async {
+    final sameBook = updated.id == book.id;
+    if (!sameBook) return;
+    final wasPlaying = playing;
+    await pause();
+    book = updated;
+    translatedContent = updated.activeTranslationLanguage == null
+        ? null
+        : await app.repository.loadTranslation(updated, updated.activeTranslationLanguage!);
+    useTranslation = translatedContent != null;
+    _loadChapterChunks(0);
+    notifyListeners();
+    if (wasPlaying) await play();
+  }
+
+  Future<void> setUseTranslation(bool value) async {
+    if (!translationAvailable && value) return;
+    final wasPlaying = playing;
+    await pause();
+    useTranslation = value && translationAvailable;
+    final maxChapter = (content?.chapters.length ?? 1) - 1;
+    chapterIndex = chapterIndex.clamp(0, maxChapter < 0 ? 0 : maxChapter).toInt();
+    _loadChapterChunks(0);
+    notifyListeners();
+    if (wasPlaying) await play();
   }
 
   Future<void> togglePlay() => playing ? pause() : play();
@@ -87,14 +132,13 @@ class ReaderController extends ChangeNotifier {
 
     try {
       while (playing && generation == _playGeneration) {
-        final language = book.language ?? app.settings.defaultLanguage;
         final speakingChunkIndex = chunkIndex;
         _resetSpokenRange();
         notifyListeners();
 
         await app.tts.speak(
           chunks[speakingChunkIndex],
-          language: language,
+          language: speechLanguage,
           rate: app.settings.speechRate,
           backend: app.settings.ttsBackend,
           neuralVoiceId: app.settings.neuralVoiceId,
@@ -103,12 +147,7 @@ class ReaderController extends ChangeNotifier {
           voiceLocale: app.settings.voiceLocale,
           engine: app.settings.ttsEngine,
           onProgress: (start, end, word) {
-            if (!playing ||
-                generation != _playGeneration ||
-                speakingChunkIndex != chunkIndex) {
-              return;
-            }
-
+            if (!playing || generation != _playGeneration || speakingChunkIndex != chunkIndex) return;
             final text = chunks[speakingChunkIndex];
             if (start < 0 || end <= start || end > text.length) return;
             spokenStart = start;
@@ -119,12 +158,10 @@ class ReaderController extends ChangeNotifier {
         );
 
         if (!playing || generation != _playGeneration) break;
-
         _resetSpokenRange();
         if (chunkIndex + 1 < chunks.length) {
           chunkIndex++;
-        } else if (content != null &&
-            chapterIndex + 1 < content!.chapters.length) {
+        } else if (content != null && chapterIndex + 1 < content!.chapters.length) {
           chapterIndex++;
           _loadChapterChunks(0);
         } else {
@@ -133,7 +170,6 @@ class ReaderController extends ChangeNotifier {
           notifyListeners();
           break;
         }
-
         await _persistProgress();
         notifyListeners();
       }
@@ -169,8 +205,7 @@ class ReaderController extends ChangeNotifier {
     if (content == null || content!.chapters.isEmpty) return;
     final wasPlaying = playing;
     await pause();
-    chapterIndex =
-        index.clamp(0, content!.chapters.length - 1).toInt();
+    chapterIndex = index.clamp(0, content!.chapters.length - 1).toInt();
     _loadChapterChunks(0);
     await _persistProgress();
     notifyListeners();
@@ -179,9 +214,7 @@ class ReaderController extends ChangeNotifier {
 
   Future<void> skip(int delta) {
     if (chunks.isEmpty) return Future<void>.value();
-    return selectChunk(
-      (chunkIndex + delta).clamp(0, chunks.length - 1).toInt(),
-    );
+    return selectChunk((chunkIndex + delta).clamp(0, chunks.length - 1).toInt());
   }
 
   Future<void> _persistProgress() async {
@@ -191,6 +224,22 @@ class ReaderController extends ChangeNotifier {
       currentChunk: chunkIndex,
     );
     await app.updateBook(book);
+  }
+
+  String _localeFor(String language) {
+    final code = language.toLowerCase().replaceAll('_', '-').split('-').first;
+    return switch (code) {
+      'pt' => 'pt-BR',
+      'en' => 'en-US',
+      'es' => 'es-ES',
+      'fr' => 'fr-FR',
+      'de' => 'de-DE',
+      'it' => 'it-IT',
+      'ja' => 'ja-JP',
+      'ko' => 'ko-KR',
+      'zh' => 'zh-CN',
+      _ => language,
+    };
   }
 
   @override

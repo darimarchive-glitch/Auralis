@@ -3,23 +3,20 @@ Auralis Proprietary License
 Copyright © 2026 Auralis. All Rights Reserved.
 
 The source code, binaries, documentation, visual assets, branding, and all other
-materials contained in this repository, except for third-party components
-identified separately, are proprietary to Auralis.
+Auralis-owned materials in this repository are proprietary.
 
 No permission is granted to copy, reproduce, modify, adapt, translate, publish,
-distribute, sublicense, sell, rent, lease, host, mirror, reverse engineer,
-create derivative works from, or otherwise use the Auralis source code or
-materials, in whole or in part, without prior written authorization from the
-copyright holder.
+distribute, sublicense, sell, rent, lease, mirror, create derivative works from,
+or otherwise reuse Auralis-owned source code or materials, in whole or in part,
+without prior written authorization from the copyright holder.
 
-Access to this repository or possession of a copy of the software does not
-transfer ownership and does not grant any license beyond the limited right to
-run an officially distributed copy of Auralis for its intended end-user
-purpose, subject to any additional terms distributed with that copy.
+Access to this repository does not transfer ownership and does not grant a
+license beyond the limited right to run officially distributed copies of
+Auralis for their intended end-user purpose.
 
-Third-party libraries, runtimes, models, fonts, and other dependencies remain
-subject to their respective licenses. Nothing in this license restricts rights
-granted directly by the licensors of those third-party components.
+Third-party libraries, runtimes, models, fonts, APIs, and other dependencies
+remain subject to their respective licenses and terms. Nothing in this license
+restricts rights independently granted by those third-party licensors.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, FITNESS
@@ -28,5 +25,4 @@ BY LAW, THE COPYRIGHT HOLDER SHALL NOT BE LIABLE FOR ANY CLAIM, DAMAGES, OR
 OTHER LIABILITY ARISING FROM OR IN CONNECTION WITH THE SOFTWARE OR ITS USE.
 
 Any rights not expressly granted are reserved.
-
 ALL RIGHTS RESERVED.

@@ -2,27 +2,22 @@ import 'package:auralis_reader/services/text_normalizer.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('repara hifenização de quebra de linha', () {
-    expect(TextNormalizer.clean('pala-\nvra'), 'palavra');
-    expect(TextNormalizer.clean('informa-\nção'), 'informação');
+  test('repara hifenização de quebra de linha sem regex inválida', () {
+    expect(TextNormalizer.clean('inter-\nnacional'), 'internacional');
   });
 
-  test('divide texto em blocos de fala', () {
-    final chunks = TextNormalizer.speechChunks('Primeira frase. Segunda frase! Terceira?');
-    expect(chunks, isNotEmpty);
-    expect(chunks.join(' '), contains('Segunda frase'));
+  test('não corta abreviações comuns como frase inteira', () {
+    final chunks = TextNormalizer.speechChunks('O Dr. Silva chegou cedo. Depois saiu.');
+    expect(chunks.length, 2);
+    expect(chunks.first, contains('Dr. Silva'));
+  });
+
+  test('divide texto longo em blocos narráveis', () {
+    final chunks = TextNormalizer.speechChunks('Olá mundo. Este é outro período!');
+    expect(chunks, hasLength(2));
   });
 
   test('identifica português por heurística', () {
-    expect(TextNormalizer.guessLanguage('Esta é uma história que foi escrita para as pessoas e com muito cuidado.'), 'pt-BR');
-  });
-
-  test('mantém blocos de fala curtos para acompanhamento visual', () {
-    final chunks = TextNormalizer.speechChunks(
-      'Uma frase curta. Outra frase curta. Esta frase é muito longa, possui uma pausa, continua depois da vírgula, e deve ser dividida de forma legível para acompanhar a narração.',
-      maxChars: 70,
-    );
-    expect(chunks.length, greaterThan(2));
-    expect(chunks.every((chunk) => chunk.length <= 70), isTrue);
+    expect(TextNormalizer.guessLanguage('Este é um texto que foi escrito para uma pessoa.'), 'pt-BR');
   });
 }

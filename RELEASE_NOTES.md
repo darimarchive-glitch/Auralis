@@ -1,26 +1,40 @@
-# Release notes
+# Auralis Reader 3.1.1
 
-## 2.1.0
+A 3.1.1 volta a usar **Flutter/Dart como base única** para Android, Windows e
+Linux. A tentativa Python/Qt permanece preservada em branch histórica, mas não
+é usada nesta release porque o APK não atingiu a confiabilidade necessária.
 
-- Novo modo **Natural** recomendado no Android: prioriza Google Speech Services e as vozes de maior qualidade disponíveis no aparelho.
-- Seleção de voz corrigida para favorecer qualidade HIGH/VERY_HIGH e vozes neurais/online quando disponíveis.
-- Acompanhamento **palavra a palavra** usando os offsets nativos do Android TTS.
-- Nova interface de leitura com cartão “Ouvindo agora”, palavra atual em destaque, contexto atenuado, auto-scroll e controles maiores.
-- O modo Supertonic passa a se chamar **Offline** e continua disponível sem API paga.
-- Supertonic offline agora usa 12 etapas por padrão e oferece 8/12/16 etapas.
-- Instalação offline refeita: não existe mais download de .tar.bz2 nem etapa pesada de descompactação.
-- Os 7 arquivos finais do Supertonic são baixados diretamente do repositório fixado no Hugging Face.
-- SHA-256 é calculado durante o próprio download dos arquivos grandes; não há uma segunda leitura pesada na etapa “verificando”.
-- Downloads são gravados em staging e só substituem o modelo instalado após todos os arquivos passarem pela validação.
-- Frases de leitura foram encurtadas e sentenças longas são quebradas por pontuação para melhorar acompanhamento e cadência.
+### Leitura e audiobook
+- leitor redesenhado e responsivo;
+- barra inferior para Livros, Traduzir, Reprodução, Audiobook e Voz;
+- troca de e-book sem voltar à tela inicial;
+- destaque palavra a palavra quando suportado pelo TTS;
+- auto-scroll do trecho narrado;
+- audiobook com capa, controles grandes, temporizador e tradução ativa.
 
-## 2.0.1
+### Voz
+- menu inferior com prévia de voz;
+- seleção das vozes do sistema;
+- priorização de vozes naturais/neural/premium;
+- Supertonic 3 offline opcional;
+- nenhum token ou chave de TTS embutido.
 
-- Corrige o travamento/fechamento no Android durante a instalação da voz neural.
-- A verificação SHA-256 e a descompactação BZip2/TAR do modelo passam para isolate de segundo plano.
+### Capas e biblioteca
+- capa incorporada de EPUB;
+- busca automática por Open Library e Google Books;
+- correspondência por título e autor para reduzir capas erradas;
+- atualização manual da capa.
 
-## 2.0.0
+### Tradução
+- tradução de livro completo por capítulo;
+- cache local da tradução;
+- alternância Original/Traduzido no leitor e audiobook;
+- perfis Fiel à obra, Moderno, Literal e Estudo;
+- modo rápido sem credenciais;
+- modo IA literária com endpoint OpenAI-compatible configurado pelo usuário.
 
-- Reorganização do Auralis como projeto multiplataforma.
-- APK Android, instalador Windows e Flatpak Linux via GitHub Actions.
-- Supertonic 3 INT8 como TTS neural local.
+### Distribuição
+- APK Android;
+- instalador EXE Windows;
+- Flatpak Linux;
+- SHA-256 dos três pacotes.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 enum TtsBackend { neural, system }
+enum TranslationProvider { auto, literaryAi, quick }
 
 class AppSettings {
   const AppSettings({
@@ -14,7 +15,14 @@ class AppSettings {
     this.voiceLocale,
     this.ttsEngine,
     this.fontScale = 1.0,
-    this.voiceModeVersion = 2,
+    this.voiceModeVersion = 3,
+    this.autoCovers = true,
+    this.translationProvider = TranslationProvider.auto,
+    this.translationTarget = 'pt',
+    this.translationProfile = 'faithful',
+    this.aiEndpoint = '',
+    this.aiModel = 'qwen2.5:7b',
+    this.aiApiKey = '',
   });
 
   final ThemeMode themeMode;
@@ -28,6 +36,13 @@ class AppSettings {
   final String? ttsEngine;
   final double fontScale;
   final int voiceModeVersion;
+  final bool autoCovers;
+  final TranslationProvider translationProvider;
+  final String translationTarget;
+  final String translationProfile;
+  final String aiEndpoint;
+  final String aiModel;
+  final String aiApiKey;
 
   AppSettings copyWith({
     ThemeMode? themeMode,
@@ -42,6 +57,13 @@ class AppSettings {
     bool clearVoice = false,
     double? fontScale,
     int? voiceModeVersion,
+    bool? autoCovers,
+    TranslationProvider? translationProvider,
+    String? translationTarget,
+    String? translationProfile,
+    String? aiEndpoint,
+    String? aiModel,
+    String? aiApiKey,
   }) =>
       AppSettings(
         themeMode: themeMode ?? this.themeMode,
@@ -55,6 +77,13 @@ class AppSettings {
         ttsEngine: ttsEngine ?? this.ttsEngine,
         fontScale: fontScale ?? this.fontScale,
         voiceModeVersion: voiceModeVersion ?? this.voiceModeVersion,
+        autoCovers: autoCovers ?? this.autoCovers,
+        translationProvider: translationProvider ?? this.translationProvider,
+        translationTarget: translationTarget ?? this.translationTarget,
+        translationProfile: translationProfile ?? this.translationProfile,
+        aiEndpoint: aiEndpoint ?? this.aiEndpoint,
+        aiModel: aiModel ?? this.aiModel,
+        aiApiKey: aiApiKey ?? this.aiApiKey,
       );
 
   Map<String, dynamic> toJson() => {
@@ -69,23 +98,33 @@ class AppSettings {
         'ttsEngine': ttsEngine,
         'fontScale': fontScale,
         'voiceModeVersion': voiceModeVersion,
+        'autoCovers': autoCovers,
+        'translationProvider': translationProvider.name,
+        'translationTarget': translationTarget,
+        'translationProfile': translationProfile,
+        'aiEndpoint': aiEndpoint,
+        'aiModel': aiModel,
+        'aiApiKey': aiApiKey,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> json) {
-    final backendName =
-        json['ttsBackend'] as String? ?? TtsBackend.system.name;
-    var backend = TtsBackend.system;
-    for (final item in TtsBackend.values) {
-      if (item.name == backendName) {
-        backend = item;
-        break;
-      }
+    TtsBackend backend = TtsBackend.system;
+    final backendName = json['ttsBackend'] as String?;
+    if (backendName != null) {
+      backend = TtsBackend.values.where((e) => e.name == backendName).firstOrNull ?? backend;
+    }
+
+    TranslationProvider provider = TranslationProvider.auto;
+    final providerName = json['translationProvider'] as String?;
+    if (providerName != null) {
+      provider = TranslationProvider.values.where((e) => e.name == providerName).firstOrNull ?? provider;
     }
 
     return AppSettings(
-      themeMode: ThemeMode.values.byName(
-        json['themeMode'] as String? ?? ThemeMode.system.name,
-      ),
+      themeMode: ThemeMode.values.where(
+            (e) => e.name == (json['themeMode'] as String? ?? 'system'),
+          ).firstOrNull ??
+          ThemeMode.system,
       speechRate: (json['speechRate'] as num?)?.toDouble() ?? 0.46,
       defaultLanguage: json['defaultLanguage'] as String? ?? 'pt-BR',
       ttsBackend: backend,
@@ -95,8 +134,18 @@ class AppSettings {
       voiceLocale: json['voiceLocale'] as String?,
       ttsEngine: json['ttsEngine'] as String?,
       fontScale: (json['fontScale'] as num?)?.toDouble() ?? 1.0,
-      voiceModeVersion:
-          (json['voiceModeVersion'] as num?)?.toInt() ?? 0,
+      voiceModeVersion: (json['voiceModeVersion'] as num?)?.toInt() ?? 0,
+      autoCovers: json['autoCovers'] as bool? ?? true,
+      translationProvider: provider,
+      translationTarget: json['translationTarget'] as String? ?? 'pt',
+      translationProfile: json['translationProfile'] as String? ?? 'faithful',
+      aiEndpoint: json['aiEndpoint'] as String? ?? '',
+      aiModel: json['aiModel'] as String? ?? 'qwen2.5:7b',
+      aiApiKey: json['aiApiKey'] as String? ?? '',
     );
   }
+}
+
+extension _FirstOrNull<T> on Iterable<T> {
+  T? get firstOrNull => isEmpty ? null : first;
 }

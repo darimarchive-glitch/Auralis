@@ -1,32 +1,25 @@
 # Third-party notices
 
-Auralis Reader itself is proprietary software distributed under the Auralis
-Proprietary License. All rights in Auralis-owned source code, binaries,
-documentation, branding, and assets are reserved.
+Auralis Reader is proprietary software. All Auralis-owned code, binaries,
+documentation, branding and visual assets are distributed under the Auralis
+Proprietary License. Third-party components remain under their own licenses.
 
-Third-party software and downloaded models remain under their respective
-licenses. The proprietary Auralis license does not replace, narrow, or expand
-rights granted by those third-party licensors.
+## Flutter and Dart
+Flutter framework and Dart SDK are distributed by their respective licensors.
 
-## sherpa-onnx
+## sherpa-onnx / Supertonic 3
+The optional local neural TTS backend uses `sherpa_onnx` and Supertonic-compatible
+model assets. The runtime and model remain subject to their own licenses. The
+model is downloaded by the user and is not committed to this repository.
 
-Auralis uses `sherpa_onnx` 1.13.8 for local ONNX text-to-speech inference.
+## Other packages
+The project uses packages including `archive`, `audioplayers`, `convert`,
+`crypto`, `file_picker`, `flutter_tts`, `html`, `http`, `path`, `path_provider`,
+`pdfrx`, `sherpa_onnx` and `xml`. Refer to each package's source distribution
+for its license and notices.
 
-- Project: https://github.com/k2-fsa/sherpa-onnx
-- License: Apache-2.0
-
-## Supertonic 3
-
-The optional local neural voice uses Supertonic 3 compatible assets distributed through the sherpa-onnx TTS model release.
-
-- Model card: https://huggingface.co/Supertone/supertonic-3
-- Model license: OpenRAIL-M
-- Compatible package: https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models
-
-The model is not committed to this repository or bundled in the base application package. It is downloaded only when the user requests neural voices.
-
-## Other Flutter packages
-
-The project uses packages including `audioplayers`, `file_picker`, `pdfrx`,
-`archive`, `xml`, `html`, `path_provider` and `flutter_tts`. Refer to
-each package's repository/package page for its license and notices.
+## Online metadata and translation
+Automatic cover lookup can query Open Library and Google Books. Quick
+translation can query Google's public translation endpoint. Literary AI mode
+uses only an endpoint explicitly configured by the user; no API key or private
+credential is included in the Auralis source repository.
