@@ -6,28 +6,51 @@ on:
     paths:
       - 'VERSION'
       - '.github/workflows/windows.yml'
+      - 'pysidedeploy.spec'
+
 permissions:
-  contents: read
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: python -m pip install --upgrade pip
-      - run: python -m pip install . nuitka
-      - name: Build standalone executable
+      - run: python -m pip install . nuitka ordered-set zstandard
+      - name: Build standalone application
         shell: pwsh
         run: |
+          $env:NUITKA_ASSUME_YES_FOR_DOWNLOADS = "yes"
           pyside6-deploy -c pysidedeploy.spec --name Auralis -f
           New-Item -ItemType Directory -Force artifacts | Out-Null
-          $dist = Get-ChildItem deployment -Recurse -Directory -Filter "*.dist" | Select-Object -First 1
+          $dist = Get-ChildItem dist -Recurse -Directory -Filter "*.dist" | Select-Object -First 1
           if (-not $dist) { throw "Nuitka standalone directory was not produced" }
           Compress-Archive -Path "$($dist.FullName)\*" -DestinationPath artifacts/Auralis-Windows-x64.zip -Force
+
       - uses: actions/upload-artifact@v4
         with:
           name: Auralis-Windows
           path: artifacts/Auralis-Windows-x64.zip
           if-no-files-found: error
+
+      - name: Attach Windows build to GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "v$((Get-Content VERSION -Raw).Trim())"
+          for ($i = 0; $i -lt 6; $i++) {
+            gh release view $tag 2>$null
+            if ($LASTEXITCODE -eq 0) { break }
+            Start-Sleep -Seconds 5
+          }
+          gh release view $tag 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --target $env:GITHUB_SHA --title "Auralis Reader $((Get-Content VERSION -Raw).Trim())" --notes-file RELEASE_NOTES.md --prerelease
+          }
+          gh release upload $tag artifacts/Auralis-Windows-x64.zip --clobber
