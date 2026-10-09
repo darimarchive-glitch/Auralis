@@ -74,6 +74,37 @@ class LibraryDatabase:
             db.execute("DELETE FROM translations WHERE book_id=?", (book_id,))
             db.execute("DELETE FROM books WHERE id=?", (book_id,))
 
+
+    def latest_translation(
+        self,
+        *,
+        book_id: str,
+        chapter_index: int,
+        target_language: str | None = None,
+    ) -> str | None:
+        query = (
+            "SELECT translated_text FROM translations "
+            "WHERE book_id=? AND chapter_index=?"
+        )
+        args: list[object] = [book_id, chapter_index]
+        if target_language:
+            query += " AND target_language=?"
+            args.append(target_language)
+        query += " ORDER BY rowid DESC LIMIT 1"
+        with self.connect() as db:
+            row = db.execute(query, tuple(args)).fetchone()
+        return str(row[0]) if row else None
+
+    def has_translation(self, *, book_id: str, target_language: str | None = None) -> bool:
+        query = "SELECT 1 FROM translations WHERE book_id=?"
+        args: list[object] = [book_id]
+        if target_language:
+            query += " AND target_language=?"
+            args.append(target_language)
+        query += " LIMIT 1"
+        with self.connect() as db:
+            return db.execute(query, tuple(args)).fetchone() is not None
+
     def cached_translation(
         self,
         *,

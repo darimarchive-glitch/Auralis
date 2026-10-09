@@ -15,3 +15,13 @@ def test_translation_chunks_preserve_paragraphs():
     chunks = translation_chunks(text, max_chars=40)
     assert "".join(chunks).replace("\n", "").replace(" ", "")
     assert all(len(chunk) <= 40 for chunk in chunks)
+
+
+def test_narration_chunks_keep_exact_offsets():
+    from auralis.text import narration_chunks
+    text = "Primeira frase. Segunda frase um pouco maior. Terceira frase."
+    chunks = narration_chunks(text, 5, max_chars=28)
+    assert chunks
+    for chunk in chunks:
+        assert text[chunk.start:chunk.start + chunk.length] == chunk.text
+    assert chunks[0].start >= 5

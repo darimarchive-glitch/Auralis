@@ -6,6 +6,7 @@ from pathlib import Path
 from PySide6.QtCore import QUrl
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
+from PySide6.QtQuickControls2 import QQuickStyle
 
 from .controller import AppController  # noqa: F401 - registers QML type
 
@@ -13,7 +14,9 @@ from .controller import AppController  # noqa: F401 - registers QML type
 def main() -> int:
     app = QGuiApplication(sys.argv)
     app.setApplicationName("Auralis")
+    app.setApplicationDisplayName("Auralis Reader")
     app.setOrganizationName("Auralis")
+    QQuickStyle.setStyle("Material")
     engine = QQmlApplicationEngine()
     qml = Path(__file__).parent / "qml" / "Main.qml"
     engine.load(QUrl.fromLocalFile(str(qml)))

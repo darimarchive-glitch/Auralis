@@ -3,6 +3,7 @@ title = Auralis
 project_dir = .
 input_file = main.py
 exec_directory = dist
+project_file = pyproject.toml
 
 [python]
 python_path = python
@@ -15,3 +16,4 @@ mode = debug
 
 [android]
 arch = aarch64
+plugins = texttospeech,platforms,imageformats,tls

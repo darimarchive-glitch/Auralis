@@ -28,3 +28,14 @@ def test_translation_cache_invalidates_when_source_changes(tmp_path: Path):
         book_id="b", chapter_index=0, target_language="pt", literary_mode="faithful",
         provider="fake", source_text="changed",
     ) is None
+
+
+def test_latest_translation(tmp_path):
+    from auralis.db import LibraryDatabase
+    db = LibraryDatabase(tmp_path / "db.sqlite3")
+    db.store_translation(
+        book_id="b", chapter_index=0, target_language="pt", literary_mode="faithful",
+        provider="test", source_text="hello", translated_text="olá"
+    )
+    assert db.latest_translation(book_id="b", chapter_index=0, target_language="pt") == "olá"
+    assert db.has_translation(book_id="b", target_language="pt")

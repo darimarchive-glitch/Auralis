@@ -5,20 +5,26 @@ from dataclasses import dataclass
 
 _ABBREVIATIONS = {
     "sr.", "sra.", "dr.", "dra.", "prof.", "profa.", "etc.", "p.ex.",
-    "mr.", "mrs.", "ms.", "dr.", "st.", "vs.", "e.g.", "i.e.",
-    "m.", "mme.", "mlle.", "fr.", "jr.", "sr.",
+    "mr.", "mrs.", "ms.", "st.", "vs.", "e.g.", "i.e.",
+    "m.", "mme.", "mlle.", "fr.", "jr.",
 }
 
 
 @dataclass(slots=True)
 class SpeechUnit:
     text: str
-    kind: str = "narration"  # narration | dialogue | heading
+    kind: str = "narration"
+
+
+@dataclass(slots=True)
+class NarrationChunk:
+    text: str
+    start: int
+    length: int
 
 
 def normalize_text(text: str) -> str:
     text = text.replace("\r\n", "\n").replace("\r", "\n").replace("\u00ad", "")
-    # Repara palavras quebradas no fim da linha sem usar escapes inválidos do Dart legado.
     text = re.sub(r"([A-Za-zÀ-ÖØ-öø-ÿ])-\s*\n\s*([A-Za-zÀ-ÖØ-öø-ÿ])", r"\1\2", text)
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r" *\n *", "\n", text)
@@ -63,8 +69,48 @@ def speech_units(text: str) -> list[SpeechUnit]:
     return units
 
 
+def narration_chunks(text: str, start_offset: int = 0, max_chars: int = 900) -> list[NarrationChunk]:
+    """Create exact slices for queued TTS while preserving indexes for word highlighting.
+
+    Qt's `sayingWord` reports offsets relative to each queued utterance.  By keeping the exact
+    starting character for every utterance, the UI can map that signal back to the ebook text
+    without timing guesses.
+    """
+    if not text:
+        return []
+    start_offset = max(0, min(int(start_offset), len(text)))
+    cursor = start_offset
+    chunks: list[NarrationChunk] = []
+    boundaries = re.compile(r"(?:[.!?…][\"'”’»)]?|\n\n|\n)\s*")
+
+    while cursor < len(text):
+        while cursor < len(text) and text[cursor].isspace():
+            cursor += 1
+        if cursor >= len(text):
+            break
+        hard_end = min(len(text), cursor + max_chars)
+        end = hard_end
+        if hard_end < len(text):
+            floor = cursor + max(max_chars // 2, 120)
+            candidates = [m.end() for m in boundaries.finditer(text, floor, hard_end)]
+            if candidates:
+                end = candidates[-1]
+            else:
+                space = text.rfind(" ", floor, hard_end)
+                if space > cursor:
+                    end = space + 1
+        raw = text[cursor:end]
+        leading = len(raw) - len(raw.lstrip())
+        trailing = len(raw.rstrip())
+        real_start = cursor + leading
+        chunk_text = raw[leading:trailing]
+        if chunk_text:
+            chunks.append(NarrationChunk(chunk_text, real_start, len(chunk_text)))
+        cursor = max(end, cursor + 1)
+    return chunks
+
+
 def translation_chunks(text: str, max_chars: int = 2200) -> list[str]:
-    """Split long prose without destroying paragraph boundaries or dialogue."""
     text = normalize_text(text)
     if len(text) <= max_chars:
         return [text] if text else []
@@ -85,7 +131,6 @@ def translation_chunks(text: str, max_chars: int = 2200) -> list[str]:
                 current = []
                 current_len = 0
             if len(piece) > max_chars:
-                # Last-resort hard split for pathological OCR paragraphs.
                 for i in range(0, len(piece), max_chars):
                     part = piece[i : i + max_chars].strip()
                     if current:

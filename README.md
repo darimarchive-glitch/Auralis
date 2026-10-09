@@ -1,104 +1,72 @@
-# Auralis 3.0
+# Auralis Reader 3.1
 
-Auralis 3 é uma reescrita do leitor em **Python + Qt/QML**, com o mesmo núcleo para Linux,
-Windows e Android. A geração Flutter anterior foi preservada na branch `legacy-flutter-2.1`.
+Auralis é um leitor universal para **Android, Windows e Linux**, com biblioteca visual, leitura sincronizada com voz, modo audiobook e tradução literária integrada. O projeto é Python + Qt/QML no desktop e usa a mesma interface Qt Quick no APK sempre que o backend da plataforma permite.
 
-O objetivo agora é ser três produtos em um só: **biblioteca**, **audiobook local** e **tradutor
-literário de livros inteiros**.
+## Experiência 3.1
 
-## O que já está na nova arquitetura
+A navegação principal fica na parte inferior: **Biblioteca · Ler · Traduzir · Audiobook**. No leitor, o botão **Livro** abre um seletor rápido de e-books sem abandonar a leitura; **Voz** abre um painel inferior com as vozes realmente instaladas no sistema e controle de velocidade.
 
-- biblioteca local com SQLite e progresso persistente;
-- importação de EPUB, PDF com camada de texto, TXT, Markdown, HTML, DOCX, FB2 e RTF;
-- extração de capa do EPUB;
-- busca automática de capa por título/autor: Open Library primeiro, Google Books como fallback;
-- pontuação de confiança para evitar associar capas claramente erradas;
-- normalização de hifenização, parágrafos, diálogos, abreviações e pontuação;
-- pipeline TTS separado do parser, preparado para prefetch/cache e voz neural;
-- tradutor de texto e de **livro completo**, com cache por capítulo;
-- quatro modos de tradução: `faithful`, `modern`, `literal`, `study`;
-- modo `smart`: prioriza o modelo local MADLAD-400 quando instalado;
-- modo leve: Argos Translate, com pacotes de idioma baixados sob demanda;
-- modo `studio`: MADLAD-400 + uma segunda revisão literária local por Qwen3;
-- nenhum token, conta ou API paga é necessário para a tradução local;
-- interface QML responsiva com Biblioteca e Tradutor no mesmo aplicativo.
+A narração usa `QTextToSpeech.enqueue()` para manter vários trechos preparados. Quando o mecanismo suporta progresso palavra a palavra, o sinal `sayingWord` do Qt fornece a posição exata da palavra dentro do trecho; o Auralis converte essa posição para a posição absoluta no capítulo e destaca o texto que está sendo falado. Em engines sem esse recurso, o destaque cai para o trecho atual.
 
-## Tradução por IA
+### Vozes
 
-### Smart — MADLAD-400 3B
+- Android: usa o mecanismo TTS instalado no aparelho. Vozes com nomes contendo **Natural, Neural, Premium, Enhanced ou Google** aparecem primeiro no menu.
+- Windows: usa as vozes expostas pelo mecanismo WinRT/Qt TextToSpeech.
+- Linux: usa os engines disponíveis através do Qt TextToSpeech, normalmente Speech Dispatcher.
+- A voz preferida e a velocidade ficam salvas localmente.
 
-O backend de maior qualidade usa `google/madlad400-3b-mt`, um modelo especializado em tradução,
-com suporte a centenas de idiomas. O modelo não é empacotado no APK/instalador: ele é baixado pelo
-runtime local na primeira utilização e fica no cache do usuário.
+O backend neural local continua isolado da interface. Isso permite acrescentar um runtime ONNX específico por plataforma sem reescrever leitor, biblioteca, sincronização ou audiobook.
 
-Instalação de desenvolvimento:
+## Tradução
+
+O Auralis mantém dois caminhos locais:
+
+- **Argos Lite** para tradução offline mais leve;
+- **MADLAD-400 3B** para tradução local de maior qualidade;
+- modo **Studio** com revisão literária opcional por Qwen para preservar tom, época e fluidez.
+
+As traduções são feitas por capítulo e guardadas no SQLite. Depois de traduzir um livro, o leitor pode alternar instantaneamente entre **Original** e **Traduzido**, e o audiobook narra a versão que estiver ativa.
+
+> Os modelos de tradução grandes não são embutidos no APK base. O APK de teste prioriza leitura, biblioteca, TTS real, sincronização e audiobook; os runtimes de IA local exigem binários próprios para Android e são instalados apenas em builds que os incluam.
+
+## Formatos
+
+EPUB, PDF com camada de texto, TXT, Markdown, HTML, DOCX, FB2 e RTF. EPUBs usam a capa incorporada quando disponível. Quando não há capa, o Auralis procura automaticamente por título/autor e só aceita correspondências acima do limiar de confiança.
+
+## Builds
+
+Os workflows em `.github/workflows/` produzem artefatos de teste:
+
+- `Android APK` → `Auralis-Android-arm64.apk`
+- `Windows build` → `Auralis-Windows.exe`
+- `Linux build` → `Auralis-Linux.bin`
+
+O APK usa o processo oficial `pyside6-android-deploy` e wheels Android do Qt for Python. O modo `debug` gera um APK instalável diretamente; builds de loja devem usar AAB/release com assinatura própria.
+
+## Desenvolvimento
 
 ```bash
-python -m pip install -e '.[translation-ai]'
+python -m pip install -e '.[dev]'
+pytest -q
+python main.py
 ```
 
-### Lite — Argos Translate
-
-Para hardware mais fraco, o Auralis pode usar Argos Translate e baixar apenas os pares de idiomas
-necessários:
+Tradução leve:
 
 ```bash
 python -m pip install -e '.[translation-lite]'
 ```
 
-### Studio — tradução + revisão literária
-
-O modo Studio adiciona um segundo passe com `Qwen/Qwen3-4B-Instruct-2507`, sempre local. O revisor
-recebe o original e a tradução base e é instruído a não inventar, resumir ou omitir conteúdo. Esse
-modo é especialmente útil para prosa antiga, diálogos, construções arcaicas e traduções em que se
-quer escolher entre preservar a época ou usar linguagem contemporânea.
-
-## Perfis literários
-
-- **faithful**: conserva época, registro, ritmo e ambiguidades;
-- **modern**: moderniza a linguagem sem resumir nem mudar fatos;
-- **literal**: interfere o mínimo possível;
-- **study**: prioriza clareza sem acrescentar notas ou conteúdo inexistente.
-
-A estrutura do livro é mantida por capítulo e por parágrafo. A tradução é cacheada com hash do texto
-original; se o capítulo não mudou, ele não é traduzido de novo.
-
-## Voz e narração
-
-Auralis mantém `QTextToSpeech` como fallback. A camada de narração já é independente do backend e
-segmenta headings, diálogos e narração, permitindo que um backend neural gere os próximos trechos
-enquanto o atual toca. `sherpa-onnx` e Supertonic continuam previstos como backend neural opcional.
-
-## Desenvolvimento
+Tradução IA local:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -e '.[dev]'
-pytest
-python main.py
+python -m pip install -e '.[translation-ai]'
 ```
-
-Para tradução de alta qualidade:
-
-```bash
-python -m pip install -e '.[dev,translation-ai]'
-```
-
-## Android
-
-Qt for Python fornece `pyside6-android-deploy`, que gera APK/AAB a partir da mesma aplicação QML.
-Dependências nativas opcionais (sherpa-onnx/Argos/MADLAD) precisam de builds compatíveis com Android;
-por isso o núcleo não depende delas para iniciar. O aplicativo continua funcional como leitor mesmo
-quando um pacote neural não está instalado.
 
 ## Privacidade
 
-Livros, progresso, traduções em cache e áudio ficam no dispositivo. A internet é usada apenas para
-funções explícitas, como baixar modelos/pacotes e procurar metadados/capas. O texto de um livro não
-precisa ser enviado a um serviço externo.
+Biblioteca, progresso, preferências e traduções em cache ficam localmente. A busca automática de capa usa internet. TTS depende do mecanismo selecionado pelo sistema operacional; algumas vozes de sistema podem usar rede, conforme a configuração do próprio sistema.
 
 ## Licença
 
-Código e materiais próprios do Auralis são **proprietários — Todos os Direitos Reservados**.
-Dependências e modelos mantêm suas licenças próprias; veja `THIRD_PARTY_NOTICES.md`.
+**Software proprietário — Todos os Direitos Reservados.** O código e os materiais próprios do Auralis não podem ser copiados, modificados, redistribuídos ou sublicenciados sem autorização prévia por escrito. Dependências de terceiros permanecem sob suas próprias licenças; consulte `THIRD_PARTY_NOTICES.md`.
