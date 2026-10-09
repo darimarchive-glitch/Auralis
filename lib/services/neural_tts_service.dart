@@ -300,7 +300,7 @@ class NeuralTtsService {
       request.maxRedirects = 8;
       request.headers.set(
         HttpHeaders.userAgentHeader,
-        'Auralis-Reader/2.1',
+        'Auralis-Reader/3.1.1',
       );
 
       final response = await request.close();
