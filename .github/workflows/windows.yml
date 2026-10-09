@@ -1,4 +1,4 @@
-name: Windows build
+name: Windows EXE
 on:
   workflow_dispatch:
   push:
@@ -7,6 +7,7 @@ on:
       - 'VERSION'
       - '.github/workflows/windows.yml'
       - 'pysidedeploy.spec'
+      - 'packaging/windows/**'
 
 permissions:
   contents: write
@@ -14,43 +15,76 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 90
+    timeout-minutes: 100
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install --upgrade pip
-      - run: python -m pip install . nuitka ordered-set zstandard
+
+      - name: Install build tools
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install . nuitka ordered-set zstandard
+          choco install innosetup -y --no-progress
+
       - name: Build standalone application
         shell: pwsh
         run: |
           $env:NUITKA_ASSUME_YES_FOR_DOWNLOADS = "yes"
           pyside6-deploy -c pysidedeploy.spec --name Auralis -f
-          New-Item -ItemType Directory -Force artifacts | Out-Null
+
           $dist = Get-ChildItem dist -Recurse -Directory -Filter "*.dist" | Select-Object -First 1
           if (-not $dist) { throw "Nuitka standalone directory was not produced" }
-          Compress-Archive -Path "$($dist.FullName)\*" -DestinationPath artifacts/Auralis-Windows-x64.zip -Force
+
+          $mainExe = Join-Path $dist.FullName "Auralis.exe"
+          if (-not (Test-Path $mainExe)) {
+            $candidate = Get-ChildItem $dist.FullName -File -Filter "*.exe" |
+              Where-Object { $_.Name -notmatch "QtWebEngineProcess" } |
+              Select-Object -First 1
+            if (-not $candidate) { throw "Auralis executable was not produced" }
+            Rename-Item $candidate.FullName "Auralis.exe"
+          }
+
+          Remove-Item packaging\windows\app -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force packaging\windows\app | Out-Null
+          Copy-Item "$($dist.FullName)\*" packaging\windows\app -Recurse -Force
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+
+      - name: Build installer EXE
+        shell: pwsh
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { throw "Inno Setup compiler not found" }
+          & $iscc "/DMyAppVersion=$version" "packaging\windows\Auralis.iss"
+          $exe = "artifacts\Auralis-Reader-$version-Setup.exe"
+          if (-not (Test-Path $exe)) { throw "Installer EXE was not produced" }
+          Get-FileHash $exe -Algorithm SHA256
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Auralis-Windows
-          path: artifacts/Auralis-Windows-x64.zip
+          name: Auralis-Windows-EXE
+          path: artifacts/Auralis-Reader-*-Setup.exe
           if-no-files-found: error
 
-      - name: Attach Windows build to GitHub release
+      - name: Attach EXE to GitHub release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = "v$((Get-Content VERSION -Raw).Trim())"
-          for ($i = 0; $i -lt 6; $i++) {
+          $version = (Get-Content VERSION -Raw).Trim()
+          $tag = "v$version"
+          for ($i = 0; $i -lt 8; $i++) {
             gh release view $tag 2>$null
             if ($LASTEXITCODE -eq 0) { break }
             Start-Sleep -Seconds 5
           }
           gh release view $tag 2>$null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --target $env:GITHUB_SHA --title "Auralis Reader $((Get-Content VERSION -Raw).Trim())" --notes-file RELEASE_NOTES.md --prerelease
+            $args = @("release","create",$tag,"--target",$env:GITHUB_SHA,"--title","Auralis Reader $version","--notes-file","RELEASE_NOTES.md")
+            if ($version -match "-(rc|beta|alpha)") { $args += "--prerelease" }
+            gh @args
           }
-          gh release upload $tag artifacts/Auralis-Windows-x64.zip --clobber
+          gh release upload $tag "artifacts\Auralis-Reader-$version-Setup.exe" --clobber
