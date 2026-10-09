@@ -23,12 +23,11 @@ jobs:
         run: |
           pyside6-deploy -c pysidedeploy.spec --name Auralis -f
           mkdir -p artifacts
-          BIN="$(find . -type f \( -name 'Auralis.bin' -o -name 'Auralis' \) -perm -111 | head -n 1)"
-          test -n "$BIN"
-          cp "$BIN" artifacts/Auralis-Linux.bin
-          chmod +x artifacts/Auralis-Linux.bin
+          DIST="$(find deployment -type d -name '*.dist' | head -n 1)"
+          test -n "$DIST"
+          tar -C "$DIST" -czf artifacts/Auralis-Linux-x64.tar.gz .
       - uses: actions/upload-artifact@v4
         with:
           name: Auralis-Linux
-          path: artifacts/Auralis-Linux.bin
+          path: artifacts/Auralis-Linux-x64.tar.gz
           if-no-files-found: error
