@@ -30,6 +30,8 @@ jobs:
           sudo apt-get install -y autoconf automake libtool pkg-config zlib1g-dev libffi-dev libssl-dev
           python -m pip install --upgrade pip
           python -m pip install 'PySide6==6.12.0' packaging
+          ANDROID_REQ="$(python -c "import PySide6, pathlib; print(pathlib.Path(PySide6.__file__).parent / 'scripts' / 'requirements-android.txt')")"
+          python -m pip install -r "$ANDROID_REQ"
 
       - name: Download official Android Qt for Python wheels
         run: |
