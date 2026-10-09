@@ -2,9 +2,6 @@
 #ifndef MyAppVersion
 #define MyAppVersion "3.1.1"
 #endif
-#ifndef MyAppSource
-#define MyAppSource "..\\..\\dist\\Auralis.dist"
-#endif
 
 [Setup]
 AppId={{2EB75C52-CABE-4FC5-B445-84C36F5D85CF}
@@ -25,7 +22,7 @@ PrivilegesRequired=lowest
 UninstallDisplayIcon={app}\Auralis.exe
 
 [Files]
-Source: "{#MyAppSource}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "app\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{autoprograms}\Auralis"; Filename: "{app}\Auralis.exe"
