@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.darimarchive_glitch.Auralis</id>
+  <name>Auralis</name>
+  <summary>Leitor universal com audiobook e tradução literária</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>LicenseRef-proprietary</project_license>
+  <description>
+    <p>Auralis reúne biblioteca, leitura sincronizada, narração, audiobook e tradução literária em uma interface única.</p>
+  </description>
+  <launchable type="desktop-id">io.github.darimarchive_glitch.Auralis.desktop</launchable>
+  <provides>
+    <binary>Auralis</binary>
+  </provides>
+  <releases>
+    <release version="3.1.1" date="2026-10-09"/>
+  </releases>
+</component>
