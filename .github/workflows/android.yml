@@ -6,12 +6,15 @@ on:
     paths:
       - 'VERSION'
       - '.github/workflows/android.yml'
+      - 'pysidedeploy.spec'
+
 permissions:
-  contents: read
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
 
@@ -24,12 +27,12 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: Install host deployment tools
+      - name: Install Android deployment tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y autoconf automake libtool pkg-config zlib1g-dev libffi-dev libssl-dev
+          sudo apt-get install -y             autoconf automake libtool pkg-config zlib1g-dev libffi-dev libssl-dev             libsqlite3-dev cmake ninja-build git zip unzip
           python -m pip install --upgrade pip
-          python -m pip install 'PySide6==6.12.0' packaging
+          python -m pip install 'PySide6==6.12.0' packaging buildozer cython virtualenv
           ANDROID_REQ="$(python -c "import PySide6, pathlib; print(pathlib.Path(PySide6.__file__).parent / 'scripts' / 'requirements-android.txt')")"
           python -m pip install -r "$ANDROID_REQ"
 
@@ -62,3 +65,16 @@ jobs:
           name: Auralis-Android-arm64
           path: artifacts/Auralis-Android-arm64.apk
           if-no-files-found: error
+
+      - name: Attach APK to GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="v$(tr -d '\r\n' < VERSION)"
+          for i in 1 2 3 4 5 6; do
+            gh release view "$TAG" >/dev/null 2>&1 && break
+            sleep 5
+          done
+          gh release view "$TAG" >/dev/null 2>&1 ||             gh release create "$TAG" --target "$GITHUB_SHA" --title "Auralis Reader $(cat VERSION)" --notes-file RELEASE_NOTES.md --prerelease
+          gh release upload "$TAG" artifacts/Auralis-Android-arm64.apk --clobber
