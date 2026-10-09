@@ -30,7 +30,7 @@ jobs:
       - name: Install Android deployment tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y             autoconf automake libtool pkg-config zlib1g-dev libffi-dev libssl-dev             libsqlite3-dev cmake ninja-build git zip unzip
+          sudo apt-get install -y             autoconf automake libtool libtool-bin libltdl-dev m4 pkg-config             zlib1g-dev libffi-dev libssl-dev libsqlite3-dev cmake ninja-build             git zip unzip
           python -m pip install --upgrade pip
           python -m pip install 'PySide6==6.12.0' packaging buildozer cython virtualenv
           ANDROID_REQ="$(python -c "import PySide6, pathlib; print(pathlib.Path(PySide6.__file__).parent / 'scripts' / 'requirements-android.txt')")"
@@ -53,17 +53,20 @@ jobs:
       - name: Build installable APK
         run: |
           pyside6-android-deploy             --config-file pysidedeploy.spec             --force             --keep-deployment-files             --name Auralis             --wheel-pyside=android-wheels/pyside6-6.12.0-6.12.0-cp310-abi3-android_aarch64.whl             --wheel-shiboken=android-wheels/shiboken6-6.12.0-6.12.0-cp310-abi3-android_aarch64.whl
+
+          VERSION="$(tr -d '\r\n' < VERSION)"
           mkdir -p artifacts
           APK="$(find . -type f -name '*.apk' | head -n 1)"
           test -n "$APK"
-          cp "$APK" artifacts/Auralis-Android-arm64.apk
-          unzip -t artifacts/Auralis-Android-arm64.apk >/dev/null
-          sha256sum artifacts/Auralis-Android-arm64.apk
+          OUT="artifacts/Auralis-Reader-$VERSION-arm64.apk"
+          cp "$APK" "$OUT"
+          unzip -t "$OUT" >/dev/null
+          sha256sum "$OUT"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Auralis-Android-arm64
-          path: artifacts/Auralis-Android-arm64.apk
+          name: Auralis-Android-APK
+          path: artifacts/Auralis-Reader-*-arm64.apk
           if-no-files-found: error
 
       - name: Attach APK to GitHub release
@@ -71,10 +74,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          TAG="v$(tr -d '\r\n' < VERSION)"
-          for i in 1 2 3 4 5 6; do
+          VERSION="$(tr -d '\r\n' < VERSION)"
+          TAG="v$VERSION"
+          OUT="artifacts/Auralis-Reader-$VERSION-arm64.apk"
+
+          for i in 1 2 3 4 5 6 7 8; do
             gh release view "$TAG" >/dev/null 2>&1 && break
             sleep 5
           done
-          gh release view "$TAG" >/dev/null 2>&1 ||             gh release create "$TAG" --target "$GITHUB_SHA" --title "Auralis Reader $(cat VERSION)" --notes-file RELEASE_NOTES.md --prerelease
-          gh release upload "$TAG" artifacts/Auralis-Android-arm64.apk --clobber
+
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            EXTRA=()
+            if [[ "$VERSION" =~ -(rc|beta|alpha) ]]; then EXTRA+=(--prerelease); fi
+            gh release create "$TAG"               --target "$GITHUB_SHA"               --title "Auralis Reader $VERSION"               --notes-file RELEASE_NOTES.md               "${EXTRA[@]}"
+          fi
+
+          gh release upload "$TAG" "$OUT" --clobber
