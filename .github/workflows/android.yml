@@ -1,33 +1,65 @@
 name: Android APK
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
-  workflow_dispatch:
+    paths:
+      - 'VERSION'
+      - 'pubspec.yaml'
+      - 'lib/**'
+      - 'android/**'
+      - '.github/workflows/android.yml'
+
+permissions:
+  contents: write
 
 jobs:
-  apk:
+  android:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.47.5'
           channel: stable
           cache: true
-      - name: Generate native runners
+
+      - name: Install project
         run: python tool/bootstrap.py
-      - name: Test
+
+      - name: Tests
         run: flutter test
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos
-      - name: Build APK
-        run: flutter build apk --release
-      - name: Rename APK
+
+      - name: Build installable APK
         run: |
+          flutter build apk --release
           mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-release.apk dist/Auralis-Reader-2.1.0.apk
+          cp build/app/outputs/flutter-apk/app-release.apk dist/Auralis-Reader-3.1.1.apk
+          unzip -t dist/Auralis-Reader-3.1.1.apk >/dev/null
+          sha256sum dist/Auralis-Reader-3.1.1.apk | tee dist/Auralis-Reader-3.1.1.apk.sha256
+
       - uses: actions/upload-artifact@v4
         with:
-          name: Auralis-Reader-2.1.0-Android
-          path: dist/Auralis-Reader-2.1.0.apk
+          name: Auralis-Reader-3.1.1-Android
+          path: |
+            dist/Auralis-Reader-3.1.1.apk
+            dist/Auralis-Reader-3.1.1.apk.sha256
           if-no-files-found: error
+
+      - name: Attach APK to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG=v3.1.1
+          for i in {1..12}; do
+            gh release view "$TAG" >/dev/null 2>&1 && break
+            sleep 5
+          done
+          gh release view "$TAG" >/dev/null 2>&1 ||             gh release create "$TAG" --target "$GITHUB_SHA" --title "Auralis Reader 3.1.1" --notes-file RELEASE_NOTES.md
+          gh release upload "$TAG" dist/Auralis-Reader-3.1.1.apk dist/Auralis-Reader-3.1.1.apk.sha256 --clobber
