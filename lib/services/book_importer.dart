@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:html/parser.dart' as html_parser;
@@ -122,13 +123,47 @@ class BookImporter {
     final language = _normalizeLocale(_firstText(opf, 'language')?.trim());
 
     final manifest = <String, String>{};
+    String? coverId;
     for (final item in _elementsByLocalName(opf, 'item')) {
       final id = item.getAttribute('id');
       final href = item.getAttribute('href');
-      if (id != null && href != null) manifest[id] = href;
+      if (id != null && href != null) {
+        manifest[id] = href;
+        final properties = item.getAttribute('properties') ?? '';
+        if (properties.split(RegExp(r'\\s+')).contains('cover-image')) {
+          coverId = id;
+        }
+      }
     }
 
+    if (coverId == null) {
+      for (final meta in _elementsByLocalName(opf, 'meta')) {
+        if ((meta.getAttribute('name') ?? '').toLowerCase() == 'cover') {
+          coverId = meta.getAttribute('content');
+          if (coverId != null) break;
+        }
+      }
+    }
+
+    Uint8List? coverBytes;
+    String? coverExtension;
     final opfDir = p.posix.dirname(normalizedOpf);
+    final coverHref = coverId == null ? null : manifest[coverId];
+    if (coverHref != null) {
+      final coverPath = _normalizeZipPath(
+        opfDir == '.'
+            ? Uri.decodeComponent(coverHref.split('#').first)
+            : p.posix.join(opfDir, Uri.decodeComponent(coverHref.split('#').first)),
+      );
+      final coverEntry = entries[coverPath];
+      if (coverEntry != null && coverEntry.isFile) {
+        final raw = coverEntry.readBytes();
+        if (raw != null && raw.isNotEmpty) {
+          coverBytes = Uint8List.fromList(raw);
+          coverExtension = p.extension(coverPath).replaceFirst('.', '').toLowerCase();
+        }
+      }
+    }
     final chapters = <BookChapter>[];
     var index = 1;
     for (final itemRef in _elementsByLocalName(opf, 'itemref')) {
@@ -159,6 +194,8 @@ class BookImporter {
       author: author?.isEmpty == true ? null : author,
       language: language ?? TextNormalizer.guessLanguage(chapters.first.text),
       chapters: chapters,
+      coverBytes: coverBytes,
+      coverExtension: coverExtension,
     );
   }
 
