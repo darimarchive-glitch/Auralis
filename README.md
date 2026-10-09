@@ -1,4 +1,4 @@
-# Auralis Reader 3.1
+# Auralis Reader 3.1.0-rc5
 
 Auralis é um leitor universal para **Android, Windows e Linux**, com biblioteca visual, leitura sincronizada com voz, modo audiobook e tradução literária integrada. O projeto é Python + Qt/QML no desktop e usa a mesma interface Qt Quick no APK sempre que o backend da plataforma permite.
 
@@ -35,11 +35,11 @@ EPUB, PDF com camada de texto, TXT, Markdown, HTML, DOCX, FB2 e RTF. EPUBs usam 
 
 ## Builds
 
-Os workflows em `.github/workflows/` produzem artefatos de teste:
+Os workflows em `.github/workflows/` produzem artefatos de teste e os anexem automaticamente ao GitHub Release correspondente ao arquivo `VERSION`:
 
 - `Android APK` → `Auralis-Android-arm64.apk`
-- `Windows build` → `Auralis-Windows.exe`
-- `Linux build` → `Auralis-Linux.bin`
+- `Windows build` → `Auralis-Windows-x64.zip`
+- `Linux build` → `Auralis-Linux-x64.tar.gz`
 
 O APK usa o processo oficial `pyside6-android-deploy` e wheels Android do Qt for Python. O modo `debug` gera um APK instalável diretamente; builds de loja devem usar AAB/release com assinatura própria.
 
