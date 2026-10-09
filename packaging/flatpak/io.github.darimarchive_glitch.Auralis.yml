@@ -1,0 +1,26 @@
+app-id: io.github.darimarchive_glitch.Auralis
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+command: Auralis
+finish-args:
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=dri
+  - --filesystem=home:ro
+  - --filesystem=xdg-documents:rw
+modules:
+  - name: auralis
+    buildsystem: simple
+    build-commands:
+      - install -d /app/auralis /app/bin /app/share/applications /app/share/icons/hicolor/scalable/apps /app/share/metainfo
+      - cp -a Auralis.dist/. /app/auralis/
+      - ln -s /app/auralis/Auralis /app/bin/Auralis
+      - install -Dm644 io.github.darimarchive_glitch.Auralis.desktop /app/share/applications/io.github.darimarchive_glitch.Auralis.desktop
+      - install -Dm644 io.github.darimarchive_glitch.Auralis.svg /app/share/icons/hicolor/scalable/apps/io.github.darimarchive_glitch.Auralis.svg
+      - install -Dm644 io.github.darimarchive_glitch.Auralis.metainfo.xml /app/share/metainfo/io.github.darimarchive_glitch.Auralis.metainfo.xml
+    sources:
+      - type: dir
+        path: app
